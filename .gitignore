@@ -32,6 +32,8 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+# Keep the example template (no real secrets)
+!.env.production.example
 
 # vercel
 .vercel
@@ -39,3 +41,21 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.egg-info/
+dist/
+.venv/
+venv/
+env/
+
+# ML model weights (large binary — deploy separately to HF Spaces)
+*.pt
+*.pth
+*.ckpt
+*.bin
+
