@@ -13,6 +13,11 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  const { data: factors } = await supabase.auth.mfa.listFactors()
+  if (!factors || factors.totp.length === 0) {
+    redirect('/mfa-setup?mandatory=true')
+  }
+
   if (user.app_metadata.provider === 'email') {
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
     if (aal?.nextLevel === 'aal2' && aal.currentLevel === 'aal1') {

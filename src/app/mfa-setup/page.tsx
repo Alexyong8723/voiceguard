@@ -29,6 +29,8 @@ export default function MfaSetupPage() {
 
   const [aal1NeedsVerification, setAal1NeedsVerification] = useState(false)
   const [existingFactorId, setExistingFactorId] = useState<string | null>(null)
+  
+  const isMandatory = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('mandatory') === 'true' : false
 
   useEffect(() => {
     async function checkExisting() {
@@ -213,7 +215,7 @@ export default function MfaSetupPage() {
               </button>
             </form>
             
-            <Link href="/dashboard" className="cancel-link">Cancel</Link>
+            {!isMandatory && <Link href="/dashboard" className="cancel-link">Cancel</Link>}
           </div>
         ) : existingFactors.length > 0 ? (
           <div className="existing-state">
@@ -222,7 +224,7 @@ export default function MfaSetupPage() {
             
             <div className="action-buttons">
               <button onClick={unenrollAll} className="btn-primary btn-danger">Remove & Re-configure</button>
-              <Link href="/dashboard" className="btn-secondary">Cancel</Link>
+              {!isMandatory && <Link href="/dashboard" className="btn-secondary">Cancel</Link>}
             </div>
           </div>
         ) : qrCode ? (
@@ -261,7 +263,7 @@ export default function MfaSetupPage() {
               </button>
             </form>
             
-            <Link href="/dashboard" className="cancel-link">Cancel Setup</Link>
+            {!isMandatory && <Link href="/dashboard" className="cancel-link">Cancel Setup</Link>}
           </div>
         ) : null}
 
