@@ -21,6 +21,13 @@ export default async function AdminPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
+  if (user.app_metadata.provider === 'email') {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (aal?.nextLevel === 'aal2' && aal.currentLevel === 'aal1') {
+      redirect('/login')
+    }
+  }
+
   // ── 2. Role guard: must be admin ──────────────────────────────────────────
   const { data: profile } = await supabase
     .from('profiles')

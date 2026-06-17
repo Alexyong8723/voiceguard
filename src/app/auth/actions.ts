@@ -66,6 +66,13 @@ export async function login(formData: FormData) {
     meta: { email: credentials.email, method: 'password' },
   })
 
+  if (data.user?.app_metadata.provider === 'email') {
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (aal?.nextLevel === 'aal2' && aal.currentLevel === 'aal1') {
+      return { mfaRequired: true }
+    }
+  }
+
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
@@ -310,4 +317,53 @@ export async function resetPassword(formData: FormData) {
 
   revalidatePath('/', 'layout')
   redirect('/login?reset=success')
+}
+
+// ── verifyLoginMfa ────────────────────────────────────────────────────────────
+export async function verifyLoginMfa(formData: FormData) {
+  const ip       = await getIp()
+  const supabase = await createClient()
+  const code     = (formData.get('code') as string ?? '').trim()
+
+  if (!code || code.length < 6) {
+    return { error: 'Please enter the 6-digit code.' }
+  }
+
+  const { data: factors } = await supabase.auth.mfa.listFactors()
+  const factor = factors?.totp[0]
+  if (!factor) {
+    return { error: 'No authenticator app found for this account.' }
+  }
+
+  const challenge = await supabase.auth.mfa.challenge({ factorId: factor.id })
+  if (challenge.error) {
+    return { error: challenge.error.message }
+  }
+
+  const verify = await supabase.auth.mfa.verify({
+    factorId: factor.id,
+    challengeId: challenge.data.id,
+    code,
+  })
+
+  if (verify.error) {
+    await writeAuditLog({
+      event: 'login_failure',
+      ipAddress: ip,
+      meta: { reason: 'mfa_invalid', detail: verify.error.message },
+    })
+    return { error: 'Invalid code. Please try again.' }
+  }
+
+  const { data: { user } } = await supabase.auth.getUser()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('role')
+    .eq('id', user!.id)
+    .single()
+
+  const isAdmin = profile?.role === 'admin'
+
+  revalidatePath('/', 'layout')
+  redirect(isAdmin ? '/admin' : '/dashboard')
 }

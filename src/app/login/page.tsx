@@ -3,7 +3,7 @@
 import { useState, useTransition, Suspense, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { login, sendLoginOtp, verifyLoginOtp } from '@/app/auth/actions'
+import { login, sendLoginOtp, verifyLoginOtp, verifyLoginMfa } from '@/app/auth/actions'
 import { useLang, LanguageSwitcher } from '@/lib/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 
@@ -180,6 +180,8 @@ function LoginForm() {
   const [mode,          setMode]         = useState<'password' | 'otp'>('password')
   const [error,         setError]        = useState<string | null>(null)
   const [isPending,     startTransition] = useTransition()
+  const [mfaRequired,   setMfaRequired]  = useState(false)
+  const [mfaCode,       setMfaCode]      = useState('')
 
   // ── Password mode state ───────────────────────────────────────────────────
   const [showPassword,  setShowPassword] = useState(false)
@@ -229,6 +231,26 @@ function LoginForm() {
       const result = await login(formData)
       if (!result) return
       if ('error' in result && result.error) { setError(result.error); return }
+      if ('mfaRequired' in result && result.mfaRequired) {
+        setMfaRequired(true)
+        return
+      }
+    })
+  }
+
+  // ── MFA submit ────────────────────────────────────────────────────────────
+  async function handleMfaSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setError(null)
+    if (mfaCode.length < 6) {
+      setError('Please enter all 6 digits.')
+      return
+    }
+    const fd = new FormData()
+    fd.append('code', mfaCode)
+    startTransition(async () => {
+      const result = await verifyLoginMfa(fd)
+      if (result?.error) { setError(result.error); setMfaCode(''); return }
     })
   }
 
@@ -356,7 +378,32 @@ function LoginForm() {
 
         {/* ── PASSWORD MODE ──────────────────────────────────────────────── */}
         {mode === 'password' && (
-          <form id="login-form" className="auth-form" onSubmit={handlePasswordSubmit}>
+          mfaRequired ? (
+            <form id="mfa-form" className="auth-form" onSubmit={handleMfaSubmit}>
+              <div className="otp-info-box" style={{ background:'rgba(0,135,90,.06)', borderColor:'rgba(0,135,90,.2)', color:'#00875a' }}>
+                <ShieldIcon />
+                <span><strong>Authenticator App Required</strong><br />Please enter the 6-digit code from your authenticator app to continue.</span>
+              </div>
+              <div className="form-group" style={{ marginTop: '1.5rem' }}>
+                <label className="form-label" style={{ textAlign:'center', display:'block', marginBottom:'.75rem' }}>
+                  Authenticator Code
+                </label>
+                <OtpInput value={mfaCode} onChange={setMfaCode} />
+              </div>
+              <button id="mfa-verify-btn" type="submit" className="auth-btn" disabled={isPending || mfaCode.length < 6}>
+                {isPending && <span className="auth-btn-spinner" />}
+                {isPending ? 'Verifying…' : 'Verify & Sign In'}
+              </button>
+              <div className="otp-actions" style={{ justifyContent: 'center' }}>
+                <button type="button" className="otp-back-btn"
+                  onClick={() => { setMfaRequired(false); setMfaCode(''); setError(null); }}
+                  disabled={isPending}>
+                  <ArrowLeftIcon /> Back to Login
+                </button>
+              </div>
+            </form>
+          ) : (
+            <form id="login-form" className="auth-form" onSubmit={handlePasswordSubmit}>
             <div className="form-group">
               <label htmlFor="login-email" className="form-label">{t('login_email')}</label>
               <div className="form-input-wrapper">
@@ -404,6 +451,7 @@ function LoginForm() {
               {isPending ? t('login_btn_loading') : t('login_btn')}
             </button>
           </form>
+          )
         )}
 
         {/* ── OTP MODE ───────────────────────────────────────────────────── */}
