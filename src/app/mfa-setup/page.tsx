@@ -225,7 +225,9 @@ export default function MfaSetupPage() {
               </div>
             </div>
             
-            <div className="qr-container" dangerouslySetInnerHTML={{ __html: qrCode }} />
+            <div className="qr-container">
+              <img src={qrCode} alt="Authenticator QR Code" />
+            </div>
 
             <div className="step-box">
               <span className="step-num">2</span>
@@ -418,7 +420,7 @@ export default function MfaSetupPage() {
           justify-content: center;
           margin-bottom: 1.5rem;
         }
-        .qr-container svg {
+        .qr-container img {
           width: 220px;
           height: 220px;
         }
