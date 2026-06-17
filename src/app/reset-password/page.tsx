@@ -65,17 +65,67 @@ function ResetPasswordForm() {
   const requirements       = getRequirements(password)
   const allRequirementsMet = requirements.every(r => r.met)
 
+  const [mfaRequired, setMfaRequired] = useState(false)
+  const [mfaCode, setMfaCode] = useState('')
+  const [mfaError, setMfaError] = useState<string | null>(null)
+  const [factorId, setFactorId] = useState<string | null>(null)
+  const [isVerifyingMfa, setIsVerifyingMfa] = useState(false)
+
   // Verify that an active session was established by the OTP verification step
   useEffect(() => {
     const supabase = createClient()
-    supabase.auth.getSession().then(({ data: { session }, error }) => {
+    supabase.auth.getSession().then(async ({ data: { session }, error }) => {
       if (error || !session) {
         setError('You do not have a valid session to reset your password. Please restart the password reset process.')
+        return
+      }
+      
+      if (session.user.factors && session.user.factors.length > 0) {
+        const verifiedFactor = session.user.factors.find(f => f.status === 'verified' && f.factor_type === 'totp')
+        const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+        
+        if (verifiedFactor && aal?.currentLevel === 'aal1') {
+          setMfaRequired(true)
+          setFactorId(verifiedFactor.id)
+        } else {
+          setSessionReady(true)
+        }
       } else {
         setSessionReady(true)
       }
     })
   }, [])
+
+  async function handleMfaSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    if (!factorId) return
+    setMfaError(null)
+    setIsVerifyingMfa(true)
+    const supabase = createClient()
+    
+    const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId })
+    if (challengeError) { 
+      setMfaError(challengeError.message)
+      setIsVerifyingMfa(false)
+      return 
+    }
+    
+    const { error: verifyError } = await supabase.auth.mfa.verify({
+      factorId,
+      challengeId: challenge.id,
+      code: mfaCode
+    })
+    
+    if (verifyError) { 
+      setMfaError(verifyError.message)
+      setIsVerifyingMfa(false)
+      return 
+    }
+    
+    setMfaRequired(false)
+    setSessionReady(true)
+    setIsVerifyingMfa(false)
+  }
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -116,11 +166,51 @@ function ResetPasswordForm() {
           </div>
         )}
 
-        {!sessionReady && !error && (
+        {!sessionReady && !error && !mfaRequired && (
           <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
             <span className="auth-btn-spinner" style={{ marginRight: 8 }} />
             Verifying secure session…
           </div>
+        )}
+
+        {mfaRequired && (
+          <form className="auth-form" onSubmit={handleMfaSubmit}>
+            <div className="error-banner" style={{ marginBottom: '1.5rem', backgroundColor: 'var(--bg-card)' }}>
+              <AlertIcon />
+              <span style={{ fontSize: '0.85rem' }}>
+                Your account is protected by MFA. Please enter your 6-digit authenticator code to proceed.
+              </span>
+            </div>
+            
+            {mfaError && (
+              <div className="error-banner" style={{ marginBottom: '1rem' }}>
+                <AlertIcon /><span>{mfaError}</span>
+              </div>
+            )}
+            
+            <div className="form-group">
+              <label htmlFor="mfa-code" className="form-label">Authenticator Code</label>
+              <div className="form-input-wrapper">
+                <input
+                  id="mfa-code"
+                  type="text"
+                  required
+                  placeholder="000000"
+                  className="form-input"
+                  value={mfaCode}
+                  onChange={e => setMfaCode(e.target.value)}
+                  disabled={isVerifyingMfa}
+                  maxLength={6}
+                />
+                <span className="form-input-icon"><LockIcon /></span>
+              </div>
+            </div>
+
+            <button type="submit" className="auth-btn" disabled={isVerifyingMfa || mfaCode.length < 6}>
+              {isVerifyingMfa && <span className="auth-btn-spinner" />}
+              {isVerifyingMfa ? 'Verifying…' : 'Verify Code'}
+            </button>
+          </form>
         )}
 
         {sessionReady && (
