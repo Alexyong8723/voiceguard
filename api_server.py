@@ -32,16 +32,16 @@ from model import VoiceGuardDualBranch  # noqa: E402 (model.py in same dir)
 
 # ─── Device ───────────────────────────────────────────────────────────────────
 DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-print(f"[api_server] Using device: {DEVICE}")
+print(f"[api_server] Using device: {DEVICE}", flush=True)
 
 # ─── Internal token (shared secret between Next.js and Python) ────────────────
 # Set VOICEGUARD_INTERNAL_SECRET in your environment.
 # The Next.js proxy sends this as X-Internal-Token on every request.
 _INTERNAL_SECRET = os.environ.get("VOICEGUARD_INTERNAL_SECRET", "")
 if not _INTERNAL_SECRET:
-    print("[api_server] ⚠️  VOICEGUARD_INTERNAL_SECRET is not set — /predict and /health are DISABLED.")
+    print("[api_server] WARNING: VOICEGUARD_INTERNAL_SECRET is not set -- /predict and /health are DISABLED.", flush=True)
 else:
-    print("[api_server] Internal token configured ✓")
+    print("[api_server] Internal token configured OK", flush=True)
 
 
 def verify_internal_token(request: Request):
@@ -63,7 +63,7 @@ def verify_internal_token(request: Request):
 # ─── Load model once at startup ───────────────────────────────────────────────
 MODEL_PATH = os.path.join(os.path.dirname(__file__), "best_model2.pt")
 
-print(f"[api_server] Loading model from: {MODEL_PATH}")
+print(f"[api_server] Loading model from: {MODEL_PATH}", flush=True)
 _model = VoiceGuardDualBranch(embed_dim=256).to(DEVICE)
 _checkpoint = torch.load(MODEL_PATH, map_location=DEVICE)
 if "model_state" in _checkpoint:
@@ -71,7 +71,7 @@ if "model_state" in _checkpoint:
 else:
     _model.load_state_dict(_checkpoint)
 _model.eval()
-print("[api_server] Model loaded ✓")
+print("[api_server] Model loaded OK", flush=True)
 
 # ─── Audio processing settings ────────────────────────────────────────────────
 SR = 16_000        # sample rate expected by the model
@@ -272,9 +272,9 @@ async def predict(file: UploadFile = File(...), _: None = Depends(verify_interna
 
 # ─── Entry point ──────────────────────────────────────────────────────────────
 if __name__ == "__main__":
-    # Port 7860 is the default for Hugging Face Spaces.
+    # Port 8000 is the default expected by Next.js.
     # Override with the PORT env var if your host requires a different port.
-    port = int(os.environ.get("PORT", 7860))
+    port = int(os.environ.get("PORT", 8000))
     uvicorn.run(
         "api_server:app",
         host="0.0.0.0",   # bind to all interfaces for cloud deployment

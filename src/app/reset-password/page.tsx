@@ -1,7 +1,6 @@
 'use client'
 
 import { useState, useTransition, useEffect, Suspense } from 'react'
-import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import { resetPassword } from '@/app/auth/actions'
 
@@ -53,7 +52,6 @@ const strengthColors = ['', '#f87171', '#fb923c', '#facc15', '#34d399']
 const strengthClasses = ['', 'active-weak', 'active-fair', 'active-good', 'active-strong']
 
 function ResetPasswordForm() {
-  const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirm, setShowConfirm] = useState(false)
   const [password, setPassword] = useState('')
@@ -67,23 +65,17 @@ function ResetPasswordForm() {
   const requirements       = getRequirements(password)
   const allRequirementsMet = requirements.every(r => r.met)
 
-  // Exchange the token from the URL for a session
+  // Verify that an active session was established by the OTP verification step
   useEffect(() => {
-    const code = searchParams.get('code')
-    if (!code) {
-      setError('Invalid or expired reset link. Please request a new one.')
-      return
-    }
-
     const supabase = createClient()
-    supabase.auth.exchangeCodeForSession(code).then(({ error }) => {
-      if (error) {
-        setError('This reset link has expired or already been used. Please request a new one.')
+    supabase.auth.getSession().then(({ data: { session }, error }) => {
+      if (error || !session) {
+        setError('You do not have a valid session to reset your password. Please restart the password reset process.')
       } else {
         setSessionReady(true)
       }
     })
-  }, [searchParams])
+  }, [])
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -127,7 +119,7 @@ function ResetPasswordForm() {
         {!sessionReady && !error && (
           <div style={{ textAlign: 'center', padding: '2rem 0', color: 'var(--text-muted)', fontSize: '0.9rem' }}>
             <span className="auth-btn-spinner" style={{ marginRight: 8 }} />
-            Verifying reset link…
+            Verifying secure session…
           </div>
         )}
 
@@ -218,7 +210,7 @@ function ResetPasswordForm() {
         {/* Link to go back if token is invalid */}
         {error && (
           <p className="auth-footer">
-            <a href="/forgot-password" className="auth-link">Request a new reset link</a>
+            <a href="/forgot-password" className="auth-link">Request a new reset code</a>
           </p>
         )}
       </div>

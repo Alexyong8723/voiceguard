@@ -45,6 +45,9 @@ export async function updateSession(request: NextRequest) {
     !request.nextUrl.pathname.startsWith('/verify-email') &&
     !request.nextUrl.pathname.startsWith('/terms') &&
     !request.nextUrl.pathname.startsWith('/privacy') &&
+    !request.nextUrl.pathname.startsWith('/sw.js') &&
+    !request.nextUrl.pathname.startsWith('/manifest.json') &&
+    !request.nextUrl.pathname.startsWith('/api/admin/scheduled-report') &&
     request.nextUrl.pathname !== '/'
   ) {
     const url = request.nextUrl.clone()

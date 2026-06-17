@@ -1,14 +1,17 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useTransition } from 'react'
 import { logout } from '@/app/auth/actions'
+import { sendWeeklyReport, sendCustomReport, addAdminVideo, removeAdminVideo } from './admin.actions'
 import type {
   AdminUser,
   AdminStats,
   AuditLogEntry,
   UsersByLevel,
   DailyActivity,
+  VideoItem,
 } from './admin.actions'
+import { useRouter } from 'next/navigation'
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const ShieldIcon    = ({s=20}:{s?:number}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
@@ -24,6 +27,10 @@ const ChevronUp     = ({s=14}:{s?:number}) => <svg width={s} height={s} viewBox=
 const ChevronDown   = ({s=14}:{s?:number}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
 const GridIcon      = ({s=20}:{s?:number}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
 const LogFileIcon   = ({s=20}:{s?:number}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+const MailIcon      = ({s=16}:{s?:number}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+const CheckIcon     = ({s=16}:{s?:number}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+const XIcon         = ({s=16}:{s?:number}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+const ShieldCheckIcon = ({s=20}:{s?:number}) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /><polyline points="9 12 11 14 15 10"/></svg>
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function timeAgo(iso: string | null): string {
@@ -75,10 +82,11 @@ interface Props {
   auditLogs:     AuditLogEntry[]
   usersByLevel:  UsersByLevel[]
   dailyActivity: DailyActivity[]
+  videos:        VideoItem[]
 }
 
 type SortKey = 'full_name' | 'email' | 'level' | 'total_points' | 'streak_days' | 'created_at' | 'last_sign_in_at'
-type NavTab  = 'overview' | 'users' | 'logs'
+type NavTab  = 'overview' | 'users' | 'detections' | 'logs' | 'videos'
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 function KpiCard({
@@ -208,15 +216,61 @@ function ActivityChart({ data }: { data: DailyActivity[] }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function AdminDashboardClient({
-  adminName, adminEmail, users, stats, auditLogs, usersByLevel, dailyActivity,
+  adminName, adminEmail, users, stats, auditLogs, usersByLevel, dailyActivity, videos,
 }: Props) {
+  const router = useRouter()
   const [activeTab,   setActiveTab]   = useState<NavTab>('overview')
+  
+  // Videos state
+  const [showAddVid, setShowAddVid] = useState(false)
+  const [newVid, setNewVid] = useState({ id: '', title: '', channel: '', tag: '' })
+  const [vidError, setVidError] = useState('')
+  const [isAddingVid, setIsAddingVid] = useState(false)
+
+  const handleAddVideo = async () => {
+    if (!newVid.id || !newVid.title || !newVid.channel || !newVid.tag) {
+      setVidError('All fields are required.')
+      return
+    }
+    setVidError('')
+    setIsAddingVid(true)
+    const res = await addAdminVideo(newVid.id, newVid.title, newVid.channel, newVid.tag)
+    setIsAddingVid(false)
+    if (res.success) {
+      setShowAddVid(false)
+      setNewVid({ id: '', title: '', channel: '', tag: '' })
+      router.refresh()
+    } else {
+      setVidError(res.error || 'Failed to add video')
+    }
+  }
+
+  const handleRemoveVideo = async (id: string) => {
+    if (!confirm('Are you sure you want to remove this video?')) return
+    const res = await removeAdminVideo(id)
+    if (res.success) {
+      router.refresh()
+    } else {
+      alert(res.error || 'Failed to remove video')
+    }
+  }
   const [search,      setSearch]      = useState('')
   const [sortKey,     setSortKey]     = useState<SortKey>('created_at')
   const [sortDir,     setSortDir]     = useState<'asc' | 'desc'>('desc')
   const [page,        setPage]        = useState(1)
   const [roleFilter,  setRoleFilter]  = useState<'all' | 'admin' | 'user'>('all')
   const [levelFilter, setLevelFilter] = useState<string>('all')
+  const [isSendingReport, startTransition] = useTransition()
+  const [reportStatus, setReportStatus]     = useState<string | null>(null)
+  // ── Date-range report modal ──
+  const todayStr    = new Date().toISOString().split('T')[0]
+  const weekAgoStr  = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+  const [showModal,   setShowModal]   = useState(false)
+  const [modalStart,  setModalStart]  = useState(weekAgoStr)
+  const [modalEnd,    setModalEnd]    = useState(todayStr)
+  const [modalEmail,  setModalEmail]  = useState(adminEmail)
+  const [modalStatus, setModalStatus] = useState<'idle' | 'sending' | 'sent' | 'error'>('idle')
+  const [modalError,  setModalError]  = useState('')
   const PER_PAGE = 10
 
   // ── Filtered & sorted users ──────────────────────────────────────────────
@@ -626,8 +680,14 @@ export default function AdminDashboardClient({
             {users.length}
           </span>
         </button>
+        <button className={`nav-btn${activeTab==='detections'?' active':''}`} onClick={()=>setActiveTab('detections')}>
+          <ShieldCheckIcon s={18} />Detections
+        </button>
         <button className={`nav-btn${activeTab==='logs'?' active':''}`} onClick={()=>setActiveTab('logs')}>
           <LogFileIcon s={18} />Audit Logs
+        </button>
+        <button className={`nav-btn${activeTab==='videos'?' active':''}`} onClick={()=>setActiveTab('videos')}>
+          <ShieldIcon s={18} />Videos
         </button>
 
         <div className="sidebar-divider" />
@@ -656,6 +716,8 @@ export default function AdminDashboardClient({
             <div className="topbar-title">
               {activeTab === 'overview' ? '📊 Overview Dashboard' :
                activeTab === 'users'    ? '👥 User Management' :
+               activeTab === 'detections'? '🎙️ Voice Detections' :
+               activeTab === 'videos'   ? '📺 Educational Videos' :
                                           '📋 Audit Logs'}
             </div>
             <div className="topbar-subtitle">
@@ -663,13 +725,212 @@ export default function AdminDashboardClient({
                 ? `${stats.totalUsers} total users · ${stats.activeToday} active today`
                 : activeTab === 'users'
                 ? `${filtered.length} user${filtered.length !== 1 ? 's' : ''} found`
+                : activeTab === 'detections'
+                ? `${stats.totalScans} AI scans analyzed`
+                : activeTab === 'videos'
+                ? `${videos.length} videos available`
                 : `${auditLogs.length} recent events`}
             </div>
           </div>
-          <div className="topbar-time">
-            {new Date().toLocaleDateString('en-MY', { weekday:'short', day:'2-digit', month:'short', year:'numeric' })}
+          <div style={{display:'flex', alignItems:'center', gap:8}}>
+            {/* Email report — opens date-range modal */}
+            <button
+              id="btn-email-report"
+              onClick={() => { setShowModal(true); setModalStatus('idle'); setModalError('') }}
+              style={{
+                display:'flex', alignItems:'center', gap:6,
+                padding:'6px 14px', borderRadius:8,
+                background:'rgba(102,126,234,.15)',
+                color:'#a5b4fc',
+                border:'1px solid rgba(102,126,234,.3)',
+                fontSize:'.8rem', fontWeight:600, cursor:'pointer',
+                fontFamily:'Inter,sans-serif', transition:'all .2s',
+              }}
+            >
+              <MailIcon />
+              Email Report
+            </button>
+
+            <div className="topbar-time">
+              {new Date().toLocaleDateString('en-MY', { weekday:'short', day:'2-digit', month:'short', year:'numeric' })}
+            </div>
           </div>
         </div>
+
+        {/* ── Date-Range Report Modal ─────────────────────────────────────── */}
+        {showModal && (
+          <div
+            onClick={e => { if (e.target === e.currentTarget) setShowModal(false) }}
+            style={{
+              position:'fixed', inset:0, zIndex:9999,
+              background:'rgba(0,0,0,.72)', backdropFilter:'blur(6px)',
+              display:'flex', alignItems:'center', justifyContent:'center',
+              padding:'16px',
+            }}
+          >
+            <div style={{
+              width:'100%', maxWidth:480,
+              background:'linear-gradient(160deg,#13122e 0%,#1a1635 100%)',
+              border:'1px solid rgba(99,102,241,.35)',
+              borderRadius:22, padding:'28px 28px 24px',
+              boxShadow:'0 24px 80px rgba(0,0,0,.7), 0 0 0 1px rgba(99,102,241,.15)',
+              fontFamily:'Inter,sans-serif',
+            }}>
+
+              {/* Modal header */}
+              <div style={{display:'flex', alignItems:'flex-start', justifyContent:'space-between', marginBottom:22}}>
+                <div>
+                  <div style={{display:'flex', alignItems:'center', gap:10, marginBottom:6}}>
+                    <div style={{width:38, height:38, borderRadius:11, background:'linear-gradient(135deg,#6366f1,#8b5cf6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:18}}>📊</div>
+                    <div>
+                      <div style={{fontSize:'1.05rem', fontWeight:800, color:'#e2e8f0', letterSpacing:'-0.02em'}}>Email Analytics Report</div>
+                      <div style={{fontSize:'.75rem', color:'#6b7280', marginTop:1}}>Sent as an Excel workbook (5 sheets)</div>
+                    </div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowModal(false)}
+                  style={{background:'none', border:'none', color:'#4b5563', cursor:'pointer', padding:4, display:'flex', borderRadius:8, flexShrink:0}}
+                >
+                  <XIcon s={18}/>
+                </button>
+              </div>
+
+              {/* Quick presets */}
+              <div style={{marginBottom:18}}>
+                <div style={{fontSize:'.7rem', fontWeight:700, letterSpacing:'.08em', textTransform:'uppercase', color:'#4b5563', marginBottom:8}}>Quick Select</div>
+                <div style={{display:'flex', gap:6, flexWrap:'wrap'}}>
+                  {([
+                    ['Last 7 days',  () => { const s = new Date(Date.now()-7*86400000); setModalStart(s.toISOString().split('T')[0]); setModalEnd(todayStr) }],
+                    ['Last 30 days', () => { const s = new Date(Date.now()-30*86400000); setModalStart(s.toISOString().split('T')[0]); setModalEnd(todayStr) }],
+                    ['This month',   () => { const n = new Date(); setModalStart(`${n.getFullYear()}-${String(n.getMonth()+1).padStart(2,'0')}-01`); setModalEnd(todayStr) }],
+                    ['Last month',   () => { const n = new Date(); const m = n.getMonth()===0?12:n.getMonth(); const y = n.getMonth()===0?n.getFullYear()-1:n.getFullYear(); const last = new Date(y, m, 0).getDate(); setModalStart(`${y}-${String(m).padStart(2,'0')}-01`); setModalEnd(`${y}-${String(m).padStart(2,'0')}-${last}`) }],
+                  ] as [string, () => void][]).map(([label, fn]) => (
+                    <button key={label} onClick={fn} style={{
+                      padding:'5px 12px', borderRadius:8,
+                      background:'rgba(99,102,241,.12)', border:'1px solid rgba(99,102,241,.25)',
+                      color:'#a5b4fc', fontSize:'.75rem', fontWeight:600, cursor:'pointer',
+                      fontFamily:'Inter,sans-serif', transition:'all .18s',
+                    }}>{label}</button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Date pickers */}
+              <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:16}}>
+                {[['From', modalStart, setModalStart], ['To', modalEnd, setModalEnd]].map(([label, val, setter]) => (
+                  <div key={label as string}>
+                    <label style={{display:'block', fontSize:'.72rem', fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', color:'#6b7280', marginBottom:6}}>{label as string}</label>
+                    <input
+                      type="date"
+                      value={val as string}
+                      max={todayStr}
+                      onChange={e => (setter as (v: string) => void)(e.target.value)}
+                      style={{
+                        width:'100%', padding:'9px 12px', borderRadius:10,
+                        background:'rgba(15,14,40,.8)', border:'1px solid rgba(99,102,241,.3)',
+                        color:'#e2e8f0', fontSize:'.88rem', fontFamily:'Inter,sans-serif',
+                        outline:'none', boxSizing:'border-box',
+                        colorScheme:'dark',
+                      }}
+                    />
+                  </div>
+                ))}
+              </div>
+
+              {/* Recipient email */}
+              <div style={{marginBottom:20}}>
+                <label style={{display:'block', fontSize:'.72rem', fontWeight:700, letterSpacing:'.07em', textTransform:'uppercase', color:'#6b7280', marginBottom:6}}>Send To</label>
+                <input
+                  type="email"
+                  value={modalEmail}
+                  onChange={e => setModalEmail(e.target.value)}
+                  placeholder="admin@yourdomain.com"
+                  style={{
+                    width:'100%', padding:'9px 12px', borderRadius:10,
+                    background:'rgba(15,14,40,.8)', border:'1px solid rgba(99,102,241,.3)',
+                    color:'#e2e8f0', fontSize:'.88rem', fontFamily:'Inter,sans-serif',
+                    outline:'none', boxSizing:'border-box',
+                  }}
+                />
+              </div>
+
+              {/* Preview badge */}
+              <div style={{
+                background:'rgba(99,102,241,.08)', border:'1px solid rgba(99,102,241,.2)',
+                borderRadius:10, padding:'10px 14px', marginBottom:20,
+                display:'flex', alignItems:'center', gap:10,
+              }}>
+                <span style={{fontSize:'1.1rem'}}>📎</span>
+                <div style={{flex:1, minWidth:0}}>
+                  <div style={{fontSize:'.78rem', fontWeight:700, color:'#a5b4fc'}}>
+                    VoiceGuard-Report-{modalStart}-to-{modalEnd}.xlsx
+                  </div>
+                  <div style={{fontSize:'.7rem', color:'#4b5563', marginTop:2}}>
+                    5 sheets · Summary · Daily Activity · User Levels · Detections · Audit Log
+                  </div>
+                </div>
+              </div>
+
+              {/* Error */}
+              {modalStatus === 'error' && (
+                <div style={{background:'rgba(248,113,113,.1)', border:'1px solid rgba(248,113,113,.3)', borderRadius:8, padding:'8px 12px', marginBottom:12, fontSize:'.8rem', color:'#f87171'}}>
+                  ✕ {modalError}
+                </div>
+              )}
+
+              {/* Actions */}
+              <div style={{display:'flex', gap:10, justifyContent:'flex-end'}}>
+                <button
+                  onClick={() => setShowModal(false)}
+                  style={{
+                    padding:'10px 20px', borderRadius:10, background:'none',
+                    border:'1px solid rgba(255,255,255,.1)', color:'#6b7280',
+                    fontSize:'.85rem', fontWeight:600, cursor:'pointer', fontFamily:'Inter,sans-serif',
+                  }}
+                >Cancel</button>
+                <button
+                  id="btn-send-excel-report"
+                  disabled={modalStatus === 'sending' || !modalStart || !modalEnd || !modalEmail}
+                  onClick={() => {
+                    setModalStatus('sending'); setModalError('')
+                    startTransition(async () => {
+                      const res = await sendCustomReport(modalEmail, modalStart, modalEnd)
+                      if (res.ok) {
+                        setModalStatus('sent')
+                        setTimeout(() => setShowModal(false), 2500)
+                      } else {
+                        setModalStatus('error')
+                        setModalError(res.error ?? 'Unknown error')
+                      }
+                    })
+                  }}
+                  style={{
+                    display:'flex', alignItems:'center', gap:8,
+                    padding:'10px 22px', borderRadius:10,
+                    background: modalStatus === 'sent'
+                      ? 'linear-gradient(135deg,#059669,#10b981)'
+                      : 'linear-gradient(135deg,#6366f1,#8b5cf6)',
+                    color:'white', fontSize:'.88rem', fontWeight:700,
+                    border:'none', cursor: modalStatus === 'sending' ? 'default' : 'pointer',
+                    fontFamily:'Inter,sans-serif',
+                    boxShadow:'0 4px 16px rgba(99,102,241,.4)',
+                    opacity: modalStatus === 'sending' ? .75 : 1,
+                    transition:'all .2s',
+                  }}
+                >
+                  {modalStatus === 'sending' ? (
+                    <><svg style={{animation:'spin .8s linear infinite'}} width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg>Generating Excel…</>
+                  ) : modalStatus === 'sent' ? (
+                    <><CheckIcon s={14}/>✓ Report Sent!</>
+                  ) : (
+                    <><MailIcon s={14}/>Send Excel Report</>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         <div className="admin-content">
 
@@ -722,6 +983,24 @@ export default function AdminDashboardClient({
 
             {/* Charts row */}
             <div className="charts-row">
+              <div className="panel-card">
+                <div className="panel-title">
+                  <span className="panel-title-accent" />
+                  Security Posture
+                </div>
+                <div style={{display:'flex', flexDirection:'column', gap:'1.5rem', marginTop:'1rem'}}>
+
+                  <div>
+                    <div style={{display:'flex', justifyContent:'space-between', fontSize:'.85rem', color:'#e2e8f0', fontWeight:600, marginBottom:8}}>
+                      <span>Bona-fide Ratio (Real audio)</span>
+                      <span>{stats.bonaFideRatio}%</span>
+                    </div>
+                    <div style={{width:'100%', height:8, background:'rgba(255,255,255,.1)', borderRadius:4, overflow:'hidden'}}>
+                      <div style={{width:`${stats.bonaFideRatio}%`, height:'100%', background:'#c084fc', borderRadius:4}} />
+                    </div>
+                  </div>
+                </div>
+              </div>
               <div className="panel-card">
                 <div className="panel-title">
                   <span className="panel-title-accent" />
@@ -881,6 +1160,7 @@ export default function AdminDashboardClient({
                               ? <span style={{color:'#f97316',fontWeight:700}}>🔥 {u.streak_days}d</span>
                               : '—'}
                           </td>
+
                           <td style={{color:'#64748b',fontSize:'.8rem'}}>{fmtDate(u.created_at)}</td>
                           <td style={{color:'#64748b',fontSize:'.8rem'}}>{timeAgo(u.last_sign_in_at)}</td>
                         </tr>
@@ -910,6 +1190,177 @@ export default function AdminDashboardClient({
               </div>
             </div>
           </>)}
+
+          {/* ── DETECTIONS TAB ─────────────────────────────────────────────── */}
+          {activeTab === 'detections' && (() => {
+            const detectionLogs = auditLogs.filter(log => log.event === 'detect_scan')
+            return (
+              <div className="panel-card">
+                <div className="panel-title" style={{marginBottom:'1rem'}}>
+                  <span className="panel-title-accent" />
+                  Detailed Voice Detections
+                  <span style={{marginLeft:'auto',color:'#4a5568',fontSize:'.75rem',fontWeight:500}}>
+                    {detectionLogs.length} recent scans
+                  </span>
+                </div>
+                <div className="data-table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Date & Time</th>
+                        <th>User ID</th>
+                        <th>Label</th>
+                        <th>Confidence</th>
+                        <th>Filename</th>
+                        <th>File Size</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {detectionLogs.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} style={{textAlign:'center',color:'#4a5568',padding:'2.5rem',fontSize:'.875rem'}}>
+                            No AI scans recorded yet
+                          </td>
+                        </tr>
+                      ) : detectionLogs.map(log => {
+                        const m = (log.meta || {}) as any
+                        const isSpoof = m.label === 'spoof'
+                        return (
+                          <tr key={log.id}>
+                            <td style={{color:'#64748b',fontSize:'.8rem'}}>
+                              {new Date(log.created_at).toLocaleString('en-MY', { month:'short', day:'2-digit', hour:'2-digit', minute:'2-digit' })}
+                            </td>
+                            <td style={{color:'#94a3b8',fontSize:'.8rem'}}>{log.user_id ? log.user_id.slice(0,8) + '…' : 'Anonymous'}</td>
+                            <td>
+                              <span className="level-badge" style={{
+                                background: isSpoof ? 'rgba(248,113,113,.15)' : 'rgba(192,132,252,.15)',
+                                color:      isSpoof ? '#f87171' : '#c084fc',
+                                border:    `1px solid ${isSpoof ? 'rgba(248,113,113,.3)' : 'rgba(192,132,252,.3)'}`,
+                              }}>
+                                {isSpoof ? '🚨 SPOOF' : '✅ BONA-FIDE'}
+                              </span>
+                            </td>
+                            <td style={{fontWeight:700,color:isSpoof ? '#f87171' : '#c084fc'}}>{m.confidence ? `${m.confidence}%` : '—'}</td>
+                            <td style={{color:'#cbd5e1',fontSize:'.85rem'}}>{m.filename || '—'}</td>
+                            <td style={{color:'#64748b',fontSize:'.8rem'}}>{m.size ? `${(m.size / 1024).toFixed(1)} KB` : '—'}</td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* ── VIDEOS TAB ─────────────────────────────────────────────────── */}
+          {activeTab === 'videos' && (
+            <div className="panel-card">
+              <div className="panel-title" style={{marginBottom:'1rem', display:'flex', justifyContent:'space-between'}}>
+                <div>
+                  <span className="panel-title-accent" />
+                  Manage Educational Videos
+                </div>
+                <button
+                  onClick={() => setShowAddVid(!showAddVid)}
+                  style={{
+                    background:'linear-gradient(135deg,#6366f1,#8b5cf6)', color:'white',
+                    border:'none', borderRadius:8, padding:'6px 14px', fontSize:'.8rem', fontWeight:700, cursor:'pointer'
+                  }}
+                >
+                  {showAddVid ? 'Cancel' : '+ Add Video'}
+                </button>
+              </div>
+
+              {showAddVid && (
+                <div style={{background:'rgba(255,255,255,.05)', padding:16, borderRadius:12, marginBottom:20}}>
+                  <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12}}>
+                    <div>
+                      <label style={{fontSize:'.75rem', color:'#94a3b8', display:'block', marginBottom:4}}>YouTube Video ID</label>
+                      <input
+                        value={newVid.id} onChange={e=>setNewVid({...newVid, id: e.target.value})}
+                        placeholder="e.g. 3x1fy6LQNKU"
+                        style={{width:'100%', padding:'8px 12px', background:'rgba(0,0,0,.2)', border:'1px solid rgba(255,255,255,.1)', borderRadius:8, color:'white', fontSize:'.85rem'}}
+                      />
+                    </div>
+                    <div>
+                      <label style={{fontSize:'.75rem', color:'#94a3b8', display:'block', marginBottom:4}}>Title</label>
+                      <input
+                        value={newVid.title} onChange={e=>setNewVid({...newVid, title: e.target.value})}
+                        placeholder="Video Title"
+                        style={{width:'100%', padding:'8px 12px', background:'rgba(0,0,0,.2)', border:'1px solid rgba(255,255,255,.1)', borderRadius:8, color:'white', fontSize:'.85rem'}}
+                      />
+                    </div>
+                    <div>
+                      <label style={{fontSize:'.75rem', color:'#94a3b8', display:'block', marginBottom:4}}>Channel Name</label>
+                      <input
+                        value={newVid.channel} onChange={e=>setNewVid({...newVid, channel: e.target.value})}
+                        placeholder="e.g. MCMC Malaysia"
+                        style={{width:'100%', padding:'8px 12px', background:'rgba(0,0,0,.2)', border:'1px solid rgba(255,255,255,.1)', borderRadius:8, color:'white', fontSize:'.85rem'}}
+                      />
+                    </div>
+                    <div>
+                      <label style={{fontSize:'.75rem', color:'#94a3b8', display:'block', marginBottom:4}}>Tag</label>
+                      <input
+                        value={newVid.tag} onChange={e=>setNewVid({...newVid, tag: e.target.value})}
+                        placeholder="e.g. 🇲🇾 Malay"
+                        style={{width:'100%', padding:'8px 12px', background:'rgba(0,0,0,.2)', border:'1px solid rgba(255,255,255,.1)', borderRadius:8, color:'white', fontSize:'.85rem'}}
+                      />
+                    </div>
+                  </div>
+                  {vidError && <div style={{color:'#f87171', fontSize:'.8rem', marginBottom:12}}>{vidError}</div>}
+                  <button
+                    onClick={handleAddVideo}
+                    disabled={isAddingVid}
+                    style={{background:'#34d399', color:'#022c22', border:'none', borderRadius:8, padding:'8px 16px', fontSize:'.85rem', fontWeight:700, cursor:isAddingVid ? 'default' : 'pointer', opacity:isAddingVid ? 0.7 : 1}}
+                  >
+                    {isAddingVid ? 'Adding...' : 'Save Video'}
+                  </button>
+                </div>
+              )}
+
+              <div className="data-table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Thumbnail</th>
+                      <th>Title</th>
+                      <th>Channel</th>
+                      <th>Tag</th>
+                      <th style={{textAlign:'right'}}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {videos.map(v => (
+                      <tr key={v.id}>
+                        <td>
+                          <img src={`https://img.youtube.com/vi/${v.videoId}/mqdefault.jpg`} alt={v.title} style={{width:100, borderRadius:6}} />
+                        </td>
+                        <td style={{fontWeight:600, color:'#e2e8f0'}}>{v.title}</td>
+                        <td style={{color:'#94a3b8'}}>{v.channel}</td>
+                        <td>
+                          <span style={{background:'rgba(255,255,255,.05)', padding:'4px 8px', borderRadius:6, fontSize:'.75rem', border:'1px solid rgba(255,255,255,.1)'}}>{v.tag}</span>
+                        </td>
+                        <td style={{textAlign:'right'}}>
+                          <button
+                            onClick={() => handleRemoveVideo(v.id)}
+                            style={{background:'rgba(248,113,113,.15)', color:'#f87171', border:'1px solid rgba(248,113,113,.3)', borderRadius:6, padding:'4px 8px', fontSize:'.75rem', fontWeight:600, cursor:'pointer'}}
+                          >
+                            Remove
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {videos.length === 0 && (
+                      <tr>
+                        <td colSpan={5} style={{textAlign:'center', padding:'2rem', color:'#94a3b8', fontSize:'.85rem'}}>No videos available.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
 
           {/* ── AUDIT LOGS TAB ─────────────────────────────────────────────── */}
           {activeTab === 'logs' && (

@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition, Suspense, useRef } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { login, sendLoginOtp, verifyLoginOtp } from '@/app/auth/actions'
 import { useLang, LanguageSwitcher } from '@/lib/LanguageContext'
@@ -164,6 +164,7 @@ function OtpInput({ value, onChange }: { value: string; onChange: (v: string) =>
 function LoginForm() {
   const { t } = useLang()
   const searchParams = useSearchParams()
+  const router       = useRouter()
   const resetSuccess = searchParams.get('reset') === 'success'
 
   // ── Shared state ──────────────────────────────────────────────────────────
@@ -204,9 +205,12 @@ function LoginForm() {
     const formData = new FormData(e.currentTarget)
     startTransition(async () => {
       const result = await login(formData)
-      if (result?.error) setError(result.error)
+      if (!result) return
+      if ('error' in result && result.error) { setError(result.error); return }
     })
   }
+
+
 
   // ── OTP: send code ────────────────────────────────────────────────────────
   async function handleSendOtp(e: React.FormEvent<HTMLFormElement>) {
@@ -260,6 +264,8 @@ function LoginForm() {
       startResendCooldown()
     })
   }
+
+
 
   return (
     <main className="auth-page">

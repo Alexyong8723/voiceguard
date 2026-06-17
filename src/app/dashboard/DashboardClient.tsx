@@ -138,12 +138,13 @@ interface Props {
   initialQuestions: QuizQuestion[]
   initialPoints:    UserPoints | null
   initialContacts:  TrustedContact[]
+  initialVideos?:   any[]
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function DashboardClient({
   displayName, userEmail,
-  initialQuestions, initialPoints, initialContacts,
+  initialQuestions, initialPoints, initialContacts, initialVideos,
 }: Props) {
   const { t, lang } = useLang()
 
@@ -159,26 +160,33 @@ export default function DashboardClient({
 
   // ── Video player ───────────────────────────────────────────────────────────
   // Pick a random starting video on mount; shuffle on each "next" click
-  const [vidIdx,    setVidIdx]    = useState(() => Math.floor(Math.random() * VIDEOS.length))
+  // Start at index 0 for SSR to avoid hydration mismatch, then randomise on mount
+  const [vidIdx,    setVidIdx]    = useState(0)
   const [playing,   setPlaying]   = useState(false)
+  
+  const activeVideos = initialVideos && initialVideos.length > 0 ? initialVideos : VIDEOS
 
-  const currentVid = VIDEOS[vidIdx]
+  useEffect(() => {
+    setVidIdx(Math.floor(Math.random() * activeVideos.length))
+  }, [activeVideos.length])
+
+  const currentVid = activeVideos[vidIdx]
 
   const shuffleVideo = () => {
     // Pick a different video from current
-    let next = Math.floor(Math.random() * VIDEOS.length)
-    if (VIDEOS.length > 1) while (next === vidIdx) next = Math.floor(Math.random() * VIDEOS.length)
+    let next = Math.floor(Math.random() * activeVideos.length)
+    if (activeVideos.length > 1) while (next === vidIdx) next = Math.floor(Math.random() * activeVideos.length)
     setVidIdx(next)
     setPlaying(false)
   }
 
   const prevVideo = () => {
-    setVidIdx(i => (i - 1 + VIDEOS.length) % VIDEOS.length)
+    setVidIdx(i => (i - 1 + activeVideos.length) % activeVideos.length)
     setPlaying(false)
   }
 
   const nextVideo = () => {
-    setVidIdx(i => (i + 1) % VIDEOS.length)
+    setVidIdx(i => (i + 1) % activeVideos.length)
     setPlaying(false)
   }
 
@@ -650,8 +658,38 @@ export default function DashboardClient({
               {profileTab==='settings'&&(
                 <div>
 
+                  {/* ── TWO-FACTOR AUTHENTICATION ── */}
+                  <p className="panel-section-label">🔐 Two-Factor Authentication</p>
+                  <div style={{
+                    padding:'14px 16px', borderRadius:12,
+                    background:'rgba(52,211,153,.06)', border:'1px solid rgba(52,211,153,.2)',
+                    marginBottom:'1rem',
+                  }}>
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:12}}>
+                      <div>
+                        <div style={{fontSize:'.9rem',fontWeight:700,color:'#0d1a3a',display:'flex',alignItems:'center',gap:7}}>
+                          Authenticator App
+                          <span style={{fontSize:'.65rem',fontWeight:700,padding:'2px 8px',borderRadius:99,background:'rgba(52,211,153,.15)',border:'1px solid rgba(52,211,153,.3)',color:'#2a9d7a'}}>
+                            ACTIVE
+                          </span>
+                        </div>
+                        <div style={{fontSize:'.78rem',color:'#8898bb',marginTop:3,lineHeight:1.5}}>
+                          Microsoft / Google Authenticator is protecting your account
+                        </div>
+                      </div>
+                    </div>
+                    <a href="/mfa-setup"
+                      style={{
+                        display:'inline-flex',alignItems:'center',gap:6,marginTop:10,
+                        fontSize:'.78rem',fontWeight:700,color:'#003580',
+                        textDecoration:'none',opacity:.8,
+                      }}>
+                      🔄 Re-configure authenticator →
+                    </a>
+                  </div>
+
                   {/* ── NOTIFICATIONS ── */}
-                  <p className="panel-section-label">{t('settings_notifications')}</p>
+                  <p className="panel-section-label" style={{marginTop:'1.25rem'}}>{t('settings_notifications')}</p>
                   <div className="setting-row">
                     <div>
                       <span className="setting-label">Scam alert notifications</span>

@@ -51,9 +51,14 @@ export async function login(formData: FormData) {
       ipAddress: ip,
       meta: { email: credentials.email, reason: error.message },
     })
+    // Make the error message explicitly about wrong password
+    if (error.message.toLowerCase().includes('invalid login credentials')) {
+      return { error: 'Wrong password or email. Please try again.' }
+    }
     return { error: error.message }
   }
 
+  // Complete login directly
   await writeAuditLog({
     event: 'login_success',
     userId: data.user?.id,
@@ -61,11 +66,10 @@ export async function login(formData: FormData) {
     meta: { email: credentials.email, method: 'password' },
   })
 
-  // ── Check role — admins go to /admin, users go to /dashboard ─────────────
   const { data: profile } = await supabase
     .from('profiles')
     .select('role')
-    .eq('id', data.user.id)
+    .eq('id', data.user!.id)
     .single()
 
   const isAdmin = profile?.role === 'admin'
@@ -73,6 +77,8 @@ export async function login(formData: FormData) {
   revalidatePath('/', 'layout')
   redirect(isAdmin ? '/admin' : '/dashboard')
 }
+
+
 
 // ── sendLoginOtp ──────────────────────────────────────────────────────────────
 // Step 1 of Email OTP login: send a 6-digit OTP to the user's email.
@@ -235,9 +241,7 @@ export async function forgotPassword(formData: FormData) {
   const supabase = await createClient()
   const email    = formData.get('email') as string
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email, {
-    redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/reset-password`,
-  })
+  const { error } = await supabase.auth.resetPasswordForEmail(email)
 
   if (error) {
     return { error: error.message }
@@ -250,6 +254,36 @@ export async function forgotPassword(formData: FormData) {
   })
 
   return { success: true }
+}
+
+// ── verifyPasswordResetOtp ────────────────────────────────────────────────────
+export async function verifyPasswordResetOtp(formData: FormData) {
+  const ip       = await getIp()
+  const supabase = await createClient()
+  const email    = formData.get('email') as string
+  const token    = (formData.get('token') as string ?? '').trim()
+
+  if (!token || token.length < 6) {
+    return { error: 'Please enter the 6-digit code from your email.' }
+  }
+
+  const { error, data } = await supabase.auth.verifyOtp({
+    email,
+    token,
+    type: 'recovery',
+  })
+
+  if (error) {
+    await writeAuditLog({
+      event: 'password_reset_failure',
+      ipAddress: ip,
+      meta: { email, reason: 'otp_invalid', detail: error.message },
+    })
+    return { error: 'Invalid or expired code. Please check your email and try again.' }
+  }
+
+  revalidatePath('/', 'layout')
+  redirect('/reset-password')
 }
 
 // ── resetPassword ─────────────────────────────────────────────────────────────

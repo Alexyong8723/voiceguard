@@ -6,6 +6,7 @@ import {
   fetchUserPoints,
   fetchTrustedContacts,
 } from './quiz.actions'
+import { fetchAdminVideos } from '@/app/admin/admin.actions'
 
 export default async function DashboardPage() {
   const supabase = await createClient()
@@ -17,10 +18,11 @@ export default async function DashboardPage() {
   const userEmail = user.email ?? ''
 
   // Fetch all data server-side in parallel
-  const [questions, userPoints, contacts] = await Promise.all([
+  const [questions, userPoints, contacts, videos] = await Promise.all([
     fetchDailyQuizQuestions(),
     fetchUserPoints(),
     fetchTrustedContacts(),
+    fetchAdminVideos(),
   ])
 
   return (
@@ -30,6 +32,7 @@ export default async function DashboardPage() {
       initialQuestions={questions}
       initialPoints={userPoints}
       initialContacts={contacts}
+      initialVideos={videos}
     />
   )
 }

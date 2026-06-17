@@ -6,6 +6,7 @@ import {
   fetchRecentAuditLogs,
   fetchUsersByLevel,
   fetchDailyActivity,
+  fetchAdminVideos,
 } from './admin.actions'
 import AdminDashboardClient from './AdminDashboardClient'
 
@@ -30,12 +31,13 @@ export default async function AdminPage() {
   if (profile?.role !== 'admin') redirect('/dashboard')
 
   // ── 3. Fetch all admin data in parallel ───────────────────────────────────
-  const [users, stats, auditLogs, usersByLevel, dailyActivity] = await Promise.all([
+  const [users, stats, auditLogs, usersByLevel, dailyActivity, videos] = await Promise.all([
     fetchAllUsers(),
     fetchAdminStats(),
     fetchRecentAuditLogs(),
     fetchUsersByLevel(),
     fetchDailyActivity(),
+    fetchAdminVideos(),
   ])
 
   const adminName = (user.user_metadata?.full_name as string)
@@ -52,6 +54,7 @@ export default async function AdminPage() {
       auditLogs={auditLogs}
       usersByLevel={usersByLevel}
       dailyActivity={dailyActivity}
+      videos={videos}
     />
   )
 }

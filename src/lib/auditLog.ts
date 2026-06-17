@@ -35,11 +35,15 @@ export type AuditEvent =
   | 'signup_success'
   | 'signup_failure'
   | 'password_reset_request'
+  | 'password_reset_failure'
   | 'password_reset_success'
   | 'detect_scan'
   | 'detect_rate_limited'
   | 'detect_unauthorized'
+  | 'login_mfa_required'
+  | 'login_mfa_setup_required'
   | 'api_unauthorized'
+  | 'scheduled_report_sent'
 
 export interface AuditLogParams {
   event: AuditEvent

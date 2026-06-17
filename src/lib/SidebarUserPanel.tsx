@@ -390,7 +390,7 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
                     { icon: '👥', title: 'Use Trusted Contacts',     body: 'Add your most trusted family members to your Trusted Contacts list. When in doubt, contact one of them before taking action.' },
                     { icon: '📢', title: 'Report Scams',             body: 'Report to PDRM (999), MCMC (1-800-18-8030), or Bank Negara Malaysia LINK (1-300-88-5465). Reporting helps protect others.' },
                     { icon: '📚', title: 'Explore the Awareness Hub', body: 'Read at least one article per week to stay informed about the latest scam tactics used in Malaysia and globally.' },
-                    { icon: '🔒', title: 'Protect Your Data',        body: 'Never share your login credentials with anyone. Enable MFA for maximum account security.' },
+                    { icon: '🔒', title: 'Protect Your Data',        body: 'Never share your login credentials with anyone.' },
                   ].map(g => (
                     <div key={g.title} className="sup-guide-item">
                       <div className="sup-guide-icon">{g.icon}</div>
