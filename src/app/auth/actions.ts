@@ -4,8 +4,10 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
+import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { writeAuditLog } from '@/lib/auditLog'
 import { loginLimiter } from '@/lib/rateLimit'
+import { sendMagicLinkEmail, sendPasswordResetEmail } from '@/lib/email'
 
 // ── Helper: get IP from server-side headers ───────────────────────────────────
 async function getIp(): Promise<string> {
@@ -88,43 +90,34 @@ export async function login(formData: FormData) {
 
 
 // ── sendLoginOtp ──────────────────────────────────────────────────────────────
-// Step 1 of Email OTP login: send a 6-digit OTP to the user's email.
 export async function sendLoginOtp(formData: FormData) {
-  const ip       = await getIp()
-  const supabase = await createClient()
-  const email    = formData.get('email') as string
+  const email = formData.get('email') as string
+  if (!email) return { error: 'Email is required' }
 
-  if (!email?.includes('@')) return { error: 'Please enter a valid email address.' }
+  try {
+    const adminClient = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-  // Rate-limit OTP sends per IP
-  const limit = loginLimiter.check(ip)
-  if (!limit.ok) {
-    return { error: 'Too many attempts. Please wait a few minutes before trying again.' }
-  }
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      shouldCreateUser: false, // Only existing accounts can use OTP login
-    },
-  })
-
-  if (error) {
-    // "Email not confirmed" or "User not found" surface a generic message
-    // to avoid user enumeration
-    await writeAuditLog({
-      event: 'login_failure',
-      ipAddress: ip,
-      meta: { email, reason: error.message, method: 'otp_send' },
+    const { data, error } = await adminClient.auth.admin.generateLink({
+      type: 'magiclink',
+      email,
     })
-    if (error.message.toLowerCase().includes('not found') ||
-        error.message.toLowerCase().includes('no user')) {
-      return { error: 'No account found with that email address.' }
-    }
-    return { error: error.message }
-  }
 
-  return { success: true }
+    if (error) return { error: error.message }
+    
+    // We send the 6-digit OTP code if it exists, otherwise fallback to the link
+    const otp = data.properties?.email_otp
+    const link = data.properties?.action_link
+    
+    // Send email via Nodemailer
+    await sendMagicLinkEmail(email, otp ? `Your 6-digit code is: ${otp}\n\nOr click here: ${link}` : link)
+
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || 'Failed to send login email' }
+  }
 }
 
 // ── verifyLoginOtp ────────────────────────────────────────────────────────────
@@ -245,22 +238,36 @@ export async function logout() {
 // ── forgotPassword ────────────────────────────────────────────────────────────
 export async function forgotPassword(formData: FormData) {
   const ip       = await getIp()
-  const supabase = await createClient()
   const email    = formData.get('email') as string
 
-  const { error } = await supabase.auth.resetPasswordForEmail(email)
+  try {
+    const adminClient = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
 
-  if (error) {
-    return { error: error.message }
+    const { data, error } = await adminClient.auth.admin.generateLink({
+      type: 'recovery',
+      email,
+    })
+
+    if (error) return { error: error.message }
+
+    const otp = data.properties?.email_otp
+    const link = data.properties?.action_link
+
+    await sendPasswordResetEmail(email, otp ? `Your 6-digit code is: ${otp}\n\nOr click here: ${link}` : link)
+
+    await writeAuditLog({
+      event: 'password_reset_request',
+      ipAddress: ip,
+      meta: { email },
+    })
+
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || 'Failed to send password reset email' }
   }
-
-  await writeAuditLog({
-    event: 'password_reset_request',
-    ipAddress: ip,
-    meta: { email },
-  })
-
-  return { success: true }
 }
 
 // ── verifyPasswordResetOtp ────────────────────────────────────────────────────
