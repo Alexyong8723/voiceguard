@@ -84,6 +84,16 @@ export default function MfaSetupPage() {
 
   async function startEnrollment() {
     setError(null)
+    
+    // First, clean up any stuck "unverified" factors that might block new enrollments
+    const { data: { session } } = await supabase.auth.getSession()
+    if (session?.user.factors) {
+      const unverifiedFactors = session.user.factors.filter(f => f.status === 'unverified')
+      for (const f of unverifiedFactors) {
+        await supabase.auth.mfa.unenroll({ factorId: f.id })
+      }
+    }
+
     const { data, error } = await supabase.auth.mfa.enroll({
       factorType: 'totp'
     })
