@@ -27,6 +27,9 @@ export default function MfaSetupPage() {
   const [verifyCode, setVerifyCode] = useState('')
   const [verifying, setVerifying] = useState(false)
 
+  const [aal1NeedsVerification, setAal1NeedsVerification] = useState(false)
+  const [existingFactorId, setExistingFactorId] = useState<string | null>(null)
+
   useEffect(() => {
     async function checkExisting() {
       setLoading(true)
@@ -37,11 +40,26 @@ export default function MfaSetupPage() {
         return
       }
 
-      // Find existing TOTP factors
-      const factors = session.user.factors?.filter(f => f.factor_type === 'totp') || []
+      // Check current AAL
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+      const isAal1 = aal?.currentLevel === 'aal1'
+      const needsAal2 = aal?.nextLevel === 'aal2'
+
+      // Find existing TOTP factors using listFactors
+      const { data: factorsData, error: factorsError } = await supabase.auth.mfa.listFactors()
+      const factors = factorsData?.totp || []
       
-      if (factors.length > 0 && factors.some(f => f.status === 'verified')) {
-        // User already has an active MFA. 
+      if (factors.length > 0) {
+        // User has factors
+        if (isAal1 && needsAal2) {
+          // They need to verify their existing factor first
+          setAal1NeedsVerification(true)
+          setExistingFactorId(factors[0].id)
+          setLoading(false)
+          return
+        }
+        
+        // If they are already AAL2 (or don't need it), let them re-configure
         setExistingFactors(factors)
       } else {
         // No active MFA, enroll automatically
@@ -109,6 +127,42 @@ export default function MfaSetupPage() {
     router.push('/dashboard')
   }
 
+  async function handleVerifyExisting(e: React.FormEvent) {
+    e.preventDefault()
+    if (!existingFactorId || verifyCode.length < 6) return
+    
+    setVerifying(true)
+    setError(null)
+
+    const challenge = await supabase.auth.mfa.challenge({ factorId: existingFactorId })
+    if (challenge.error) {
+      setError(challenge.error.message)
+      setVerifying(false)
+      return
+    }
+
+    const verify = await supabase.auth.mfa.verify({
+      factorId: existingFactorId,
+      challengeId: challenge.data.id,
+      code: verifyCode
+    })
+
+    if (verify.error) {
+      setError(verify.error.message)
+      setVerifying(false)
+      return
+    }
+
+    // Successfully verified! Now they are AAL2 and can re-configure.
+    setAal1NeedsVerification(false)
+    setVerifyCode('')
+    setVerifying(false)
+    
+    // Refresh factor list and let them unenroll
+    const { data: factorsData } = await supabase.auth.mfa.listFactors()
+    setExistingFactors(factorsData?.totp || [])
+  }
+
   return (
     <div className="mfa-page">
       <div className="mfa-card">
@@ -125,6 +179,32 @@ export default function MfaSetupPage() {
 
         {loading ? (
           <div className="loading-state">Loading secure environment...</div>
+        ) : aal1NeedsVerification ? (
+          <div className="setup-state">
+            <div className="step-box">
+              <span className="step-num">!</span>
+              <div>
+                <h3>Verification Required</h3>
+                <p>Before you can change your Authenticator App, you must verify your identity using your current one.</p>
+              </div>
+            </div>
+
+            <form onSubmit={handleVerifyExisting} className="verify-form" style={{ marginTop: '1.5rem' }}>
+              <input
+                type="text"
+                placeholder="000000"
+                maxLength={6}
+                value={verifyCode}
+                onChange={(e) => setVerifyCode(e.target.value.replace(/\D/g, ''))}
+                required
+              />
+              <button type="submit" className="btn-primary" disabled={verifying || verifyCode.length < 6}>
+                {verifying ? 'Verifying...' : 'Verify Existing Authenticator'}
+              </button>
+            </form>
+            
+            <Link href="/dashboard" className="cancel-link">Cancel</Link>
+          </div>
         ) : existingFactors.length > 0 ? (
           <div className="existing-state">
             <p>You already have an Authenticator App protecting your account.</p>
