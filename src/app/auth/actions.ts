@@ -135,7 +135,7 @@ export async function verifyLoginOtp(formData: FormData) {
   const { error, data } = await supabase.auth.verifyOtp({
     email,
     token,
-    type: 'email',
+    type: 'magiclink',
   })
 
   if (error) {
