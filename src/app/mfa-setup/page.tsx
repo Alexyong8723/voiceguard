@@ -1,6 +1,8 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+export const dynamic = 'force-dynamic'
+
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
@@ -14,7 +16,7 @@ const ShieldIcon = () => (
 
 export default function MfaSetupPage() {
   const router = useRouter()
-  const supabase = createClient()
+  const supabase = useRef(createClient()).current
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
