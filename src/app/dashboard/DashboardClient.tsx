@@ -243,6 +243,9 @@ export default function DashboardClient({
   const [cErr,        setCErr]       = useState('')
   const [cPending,    startC]        = useTransition()
 
+  // ── Mobile sidebar drawer ─────────────────────────────────
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   // ── Profile panel ──────────────────────────────────────────────
   const [profileOpen, setProfileOpen] = useState(false)
   const [profileTab,  setProfileTab]  = useState<'profile'|'settings'|'tnc'|'guide'>('profile')
@@ -331,7 +334,7 @@ export default function DashboardClient({
   }
 
   return (
-    <div style={{display:'flex',minHeight:'100vh',background:'var(--bg-primary)',fontFamily:"'Inter',sans-serif"}}>
+    <div style={{display:'flex',flexDirection:'column',minHeight:'100vh',background:'var(--bg-primary)',fontFamily:"'Inter',sans-serif"}}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
@@ -355,7 +358,18 @@ export default function DashboardClient({
         .soon-badge{font-size:.72rem;font-weight:700;letter-spacing:.06em;padding:4px 12px;border-radius:99px;background:rgba(245,168,0,.12);border:1px solid rgba(245,168,0,.3);color:#a07800;text-transform:uppercase}
         .dash-grid{display:grid;grid-template-columns:1fr 300px;gap:1.5rem}
         @media(max-width:900px){.dash-grid{grid-template-columns:1fr}.dash-main{padding:1.25rem}}
-        @media(max-width:700px){.dash-sidebar{display:none}}
+        @media(max-width:700px){
+          .dash-sidebar{position:fixed;left:0;top:0;height:100vh;z-index:60;transform:translateX(-100%);transition:transform .28s cubic-bezier(.16,1,.3,1);box-shadow:4px 0 32px rgba(0,30,80,.18)}
+          .dash-sidebar.mobile-open{transform:translateX(0)}
+          .dash-main{padding:1rem 1rem 5rem}
+          .mobile-top-bar{display:flex}
+        }
+        .mobile-top-bar{display:none;align-items:center;justify-content:space-between;padding:.75rem 1rem;background:#fff;border-bottom:1px solid rgba(0,53,128,.1);position:sticky;top:0;z-index:30;box-shadow:0 2px 8px rgba(0,53,128,.06)}
+        .hamburger-btn{background:none;border:none;cursor:pointer;padding:8px;border-radius:10px;color:#003580;display:flex;align-items:center;justify-content:center;transition:background .2s;min-width:40px;min-height:40px}
+        .hamburger-btn:hover{background:rgba(0,53,128,.08)}
+        .sidebar-overlay{display:none}
+        @media(max-width:700px){.sidebar-overlay{display:block;position:fixed;inset:0;background:rgba(0,30,80,.4);backdrop-filter:blur(3px);z-index:59}}
+        @media(max-width:700px){.sidebar-close-mobile{display:flex!important}}
 
         /* ── hub card ── */
         .hub-card{background:#ffffff;border:1px solid rgba(0,53,128,0.12);border-radius:20px;overflow:hidden}
@@ -530,10 +544,45 @@ export default function DashboardClient({
         }
       `}</style>
 
+      {/* ── Mobile top bar (hamburger) ─────────────────────────────────────── */}
+      <div className="mobile-top-bar">
+        <button className="hamburger-btn" onClick={() => setMobileMenuOpen(true)} aria-label="Open menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{width:32,height:32,borderRadius:9,background:'linear-gradient(135deg,#003580,#1a4fa0)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <ShieldIcon size={16}/>
+          </div>
+          <span style={{fontWeight:800,fontSize:'.95rem',color:'#003580'}}>VoiceGuard</span>
+        </div>
+        <div className="user-avatar" style={{cursor:'pointer'}} onClick={() => {setProfileOpen(true);setProfileTab('profile')}}>{initials}</div>
+      </div>
+
+      {/* ── Mobile sidebar overlay backdrop ───────────────────────────────── */}
+      {mobileMenuOpen && (
+        <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)} />
+      )}
+
+      {/* ── Sidebar + Main (flex row) ────────────────────────────────────── */}
+      <div style={{display:'flex',flex:1}}>
+
       {/* ── Sidebar ─────────────────────────────────────────────────────────── */}
-      <aside className="dash-sidebar">
+      <aside className={`dash-sidebar${mobileMenuOpen ? ' mobile-open' : ''}`}>
         {/* Top bar accent line — Malaysian govt style */}
         <div style={{position:'absolute',top:0,left:0,right:0,height:'4px',background:'linear-gradient(90deg,#003580,#1a4fa0,#CC0001)'}} />
+        {/* Close button — only visible on mobile */}
+        <button
+          onClick={() => setMobileMenuOpen(false)}
+          style={{display:'none',position:'absolute',top:12,right:12,background:'none',border:'none',cursor:'pointer',padding:6,borderRadius:8,color:'#8898bb'}}
+          className="sidebar-close-mobile"
+          aria-label="Close menu"
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
         <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:'2rem',paddingLeft:4,marginTop:'0.75rem'}}>
           <div style={{width:40,height:40,borderRadius:11,background:'linear-gradient(135deg,#003580,#1a4fa0)',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 4px 14px rgba(0,53,128,.3)'}}>
             <ShieldIcon size={18}/>
@@ -547,7 +596,8 @@ export default function DashboardClient({
           <div style={{fontSize:'.7rem',fontWeight:800,letterSpacing:'.1em',textTransform:'uppercase',color:'#8898bb',padding:'0 14px',marginBottom:10}}>Main Menu</div>
           {NAV_HREFS.map(n=>(
             <Link key={n.href} href={n.disabled?'#':n.href}
-              className={`nav-item${n.active?' nav-active':''}${n.disabled?' nav-disabled':''}`}>
+              className={`nav-item${n.active?' nav-active':''}${n.disabled?' nav-disabled':''}`}
+              onClick={() => setMobileMenuOpen(false)}>
               <n.icon size={20}/>{t(n.tKey)}
               {n.badge&&<span className="nav-badge">{n.badge}</span>}
             </Link>
@@ -1281,6 +1331,7 @@ export default function DashboardClient({
           </div>{/* end right col */}
         </div>{/* end dash-grid */}
       </main>
+      </div>{/* end flex row */}
     </div>
   )
 }

@@ -40,8 +40,10 @@ const securityHeaders = [
       "img-src 'self' data: blob:",
       // Media: same-origin + blob (for recorded audio)
       "media-src 'self' blob:",
-      // API connections: same-origin + Supabase + Gemini
-      "connect-src 'self' https://*.supabase.co https://generativelanguage.googleapis.com",
+      // API connections: same-origin + Supabase + Google APIs + Groq
+      "connect-src 'self' https://*.supabase.co https://generativelanguage.googleapis.com https://accounts.google.com https://oauth2.googleapis.com https://openidconnect.googleapis.com https://api.groq.com",
+      // Frame source: allow Google OAuth
+      "frame-src https://accounts.google.com",
       // No plugins, no objects
       "object-src 'none'",
       // Base URI restriction

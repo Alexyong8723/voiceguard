@@ -421,6 +421,7 @@ export default function AwarenessPage() {
   const [errorMsg,    setErrorMsg]    = useState('')
   const [errorDetail, setErrorDetail] = useState('')
   const [expandedId,  setExpandedId]  = useState<string | null>(null)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
 
   // Filters
   const [region,     setRegion]     = useState('all')
@@ -471,7 +472,7 @@ export default function AwarenessPage() {
   })
 
   return (
-    <div style={{ display: 'flex', minHeight: '100vh', background: 'var(--bg-primary)', fontFamily: "'Inter', sans-serif" }}>
+    <div style={{ display: 'flex', flexDirection: 'column', minHeight: '100vh', background: 'var(--bg-primary)', fontFamily: "'Inter', sans-serif" }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
@@ -496,7 +497,18 @@ export default function AwarenessPage() {
           background: rgba(245,168,0,.15); color: #a07800; border: 1px solid rgba(245,168,0,.3);
         }
         .aw-main { flex: 1; min-width: 0; padding: 2rem 2.5rem; overflow-x: hidden; max-width: 900px; }
-        @media(max-width:700px){ .dash-sidebar{display:none} .aw-main{padding:1.25rem} }
+        @media(max-width:700px){
+          .dash-sidebar{position:fixed;left:0;top:0;height:100vh;z-index:60;transform:translateX(-100%);transition:transform .28s cubic-bezier(.16,1,.3,1);box-shadow:4px 0 32px rgba(0,30,80,.18)}
+          .dash-sidebar.mobile-open{transform:translateX(0)}
+          .aw-main{padding:1rem 1rem 5rem}
+          .mobile-top-bar{display:flex}
+        }
+        .mobile-top-bar{display:none;align-items:center;justify-content:space-between;padding:.75rem 1rem;background:#fff;border-bottom:1px solid rgba(0,53,128,.1);position:sticky;top:0;z-index:30;box-shadow:0 2px 8px rgba(0,53,128,.06)}
+        .hamburger-btn{background:none;border:none;cursor:pointer;padding:8px;border-radius:10px;color:#003580;display:flex;align-items:center;justify-content:center;transition:background .2s;min-width:40px;min-height:40px}
+        .hamburger-btn:hover{background:rgba(0,53,128,.08)}
+        .sidebar-overlay{display:none}
+        @media(max-width:700px){.sidebar-overlay{display:block;position:fixed;inset:0;background:rgba(0,30,80,.4);backdrop-filter:blur(3px);z-index:59}}
+        @media(max-width:700px){.sidebar-close-mobile{display:flex!important}}
 
         /* hero */
         .aw-hero {
@@ -709,9 +721,41 @@ export default function AwarenessPage() {
         .btn-sm:hover { opacity:.85; }
       `}</style>
 
+      {/* ── Mobile top bar (hamburger) ── */}
+      <div className="mobile-top-bar">
+        <button className="hamburger-btn" onClick={() => setMobileMenuOpen(true)} aria-label="Open menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{width:32,height:32,borderRadius:9,background:'linear-gradient(135deg,#003580,#1a4fa0)',display:'flex',alignItems:'center',justifyContent:'center'}}>
+            <ShieldIcon size={16} />
+          </div>
+          <span style={{fontWeight:800,fontSize:'.95rem',color:'#003580'}}>VoiceGuard</span>
+        </div>
+        <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#003580,#1a4fa0)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.85rem',fontWeight:700,color:'white'}}>
+          U
+        </div>
+      </div>
+
+      {/* ── Mobile overlay ── */}
+      {mobileMenuOpen && (
+        <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)} />
+      )}
+
+      <div style={{display:'flex',flex:1}}>
+
       {/* ── Sidebar ── */}
-      <aside className="dash-sidebar" style={{ position: 'relative' }}>
+      <aside className={`dash-sidebar${mobileMenuOpen ? ' mobile-open' : ''}`} style={{ position: 'relative' }}>
         <div style={{ position:'absolute',top:0,left:0,right:0,height:'4px',background:'linear-gradient(90deg,#003580,#1a4fa0,#CC0001)' }}/>
+        <button onClick={() => setMobileMenuOpen(false)}
+          style={{display:'none',position:'absolute',top:12,right:12,background:'none',border:'none',cursor:'pointer',padding:6,borderRadius:8,color:'#8898bb'}}
+          className="sidebar-close-mobile" aria-label="Close menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
         <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: '2rem', paddingLeft: 4, marginTop: '0.75rem' }}>
           <div style={{ width: 40, height: 40, borderRadius: 11, background: 'linear-gradient(135deg,#003580,#1a4fa0)', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 14px rgba(0,53,128,.3)' }}>
             <ShieldIcon size={18} />
@@ -954,6 +998,7 @@ export default function AwarenessPage() {
           )
         })}
       </main>
+      </div>{/* end flex row */}
     </div>
   )
 }
