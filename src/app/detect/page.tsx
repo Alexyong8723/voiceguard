@@ -500,7 +500,7 @@ export default function DetectPage() {
       <div style={{display:'flex',flex:1}}>
 
       {/* ── Sidebar ───────────────────────────────────────────────────────────── */}
-      <aside className={`det-sidebar${mobileMenuOpen ? ' mobile-open' : ''}`} style={{ position: 'relative' }}>
+      <aside className={`det-sidebar${mobileMenuOpen ? ' mobile-open' : ''}`}>
         <button onClick={() => setMobileMenuOpen(false)}
           style={{display:'none',position:'absolute',top:12,right:12,background:'none',border:'none',cursor:'pointer',padding:6,borderRadius:8,color:'#8898bb'}}
           className="sidebar-close-mobile" aria-label="Close menu">

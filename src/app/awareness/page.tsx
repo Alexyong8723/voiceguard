@@ -748,7 +748,7 @@ export default function AwarenessPage() {
       <div style={{display:'flex',flex:1}}>
 
       {/* ── Sidebar ── */}
-      <aside className={`dash-sidebar${mobileMenuOpen ? ' mobile-open' : ''}`} style={{ position: 'relative' }}>
+      <aside className={`dash-sidebar${mobileMenuOpen ? ' mobile-open' : ''}`}>
         <div style={{ position:'absolute',top:0,left:0,right:0,height:'4px',background:'linear-gradient(90deg,#003580,#1a4fa0,#CC0001)' }}/>
         <button onClick={() => setMobileMenuOpen(false)}
           style={{display:'none',position:'absolute',top:12,right:12,background:'none',border:'none',cursor:'pointer',padding:6,borderRadius:8,color:'#8898bb'}}
