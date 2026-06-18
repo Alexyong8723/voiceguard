@@ -498,9 +498,9 @@ export default function AwarenessPage() {
         }
         .aw-main { flex: 1; min-width: 0; padding: 2rem 2.5rem; overflow-x: hidden; max-width: 900px; }
         @media(max-width:768px){
-          .dash-sidebar{position:fixed;left:0;top:0;height:100vh;z-index:60;transform:translateX(-100%);transition:transform .28s cubic-bezier(.16,1,.3,1);box-shadow:4px 0 32px rgba(0,30,80,.18)}
+          .dash-sidebar{position:fixed;left:0;top:0;width:240px;height:100vh;z-index:60;transform:translateX(-100%);transition:transform .28s cubic-bezier(.16,1,.3,1);box-shadow:4px 0 32px rgba(0,30,80,.18);overflow:hidden}
           .dash-sidebar.mobile-open{transform:translateX(0)}
-          .aw-main{padding:1rem 1rem 5rem}
+          .aw-main{padding:1rem 1rem 5rem;width:100%}
           .mobile-top-bar{display:flex}
         }
         .mobile-top-bar{display:none;align-items:center;justify-content:space-between;padding:.75rem 1rem;background:#fff;border-bottom:1px solid rgba(0,53,128,.1);position:sticky;top:0;z-index:30;box-shadow:0 2px 8px rgba(0,53,128,.06)}
