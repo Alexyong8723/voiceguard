@@ -497,7 +497,7 @@ export default function AwarenessPage() {
           background: rgba(245,168,0,.15); color: #a07800; border: 1px solid rgba(245,168,0,.3);
         }
         .aw-main { flex: 1; min-width: 0; padding: 2rem 2.5rem; overflow-x: hidden; max-width: 900px; }
-        @media(max-width:700px){
+        @media(max-width:768px){
           .dash-sidebar{position:fixed;left:0;top:0;height:100vh;z-index:60;transform:translateX(-100%);transition:transform .28s cubic-bezier(.16,1,.3,1);box-shadow:4px 0 32px rgba(0,30,80,.18)}
           .dash-sidebar.mobile-open{transform:translateX(0)}
           .aw-main{padding:1rem 1rem 5rem}
@@ -507,8 +507,8 @@ export default function AwarenessPage() {
         .hamburger-btn{background:none;border:none;cursor:pointer;padding:8px;border-radius:10px;color:#003580;display:flex;align-items:center;justify-content:center;transition:background .2s;min-width:40px;min-height:40px}
         .hamburger-btn:hover{background:rgba(0,53,128,.08)}
         .sidebar-overlay{display:none}
-        @media(max-width:700px){.sidebar-overlay{display:block;position:fixed;inset:0;background:rgba(0,30,80,.4);backdrop-filter:blur(3px);z-index:59}}
-        @media(max-width:700px){.sidebar-close-mobile{display:flex!important}}
+        @media(max-width:768px){.sidebar-overlay{display:block;position:fixed;inset:0;background:rgba(0,30,80,.4);backdrop-filter:blur(3px);z-index:59}}
+        @media(max-width:768px){.sidebar-close-mobile{display:flex!important}}
 
         /* hero */
         .aw-hero {

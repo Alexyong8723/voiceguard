@@ -358,7 +358,7 @@ export default function DashboardClient({
         .soon-badge{font-size:.72rem;font-weight:700;letter-spacing:.06em;padding:4px 12px;border-radius:99px;background:rgba(245,168,0,.12);border:1px solid rgba(245,168,0,.3);color:#a07800;text-transform:uppercase}
         .dash-grid{display:grid;grid-template-columns:1fr 300px;gap:1.5rem}
         @media(max-width:900px){.dash-grid{grid-template-columns:1fr}.dash-main{padding:1.25rem}}
-        @media(max-width:700px){
+        @media(max-width:768px){
           .dash-sidebar{position:fixed;left:0;top:0;height:100vh;z-index:60;transform:translateX(-100%);transition:transform .28s cubic-bezier(.16,1,.3,1);box-shadow:4px 0 32px rgba(0,30,80,.18)}
           .dash-sidebar.mobile-open{transform:translateX(0)}
           .dash-main{padding:1rem 1rem 5rem}
@@ -368,8 +368,8 @@ export default function DashboardClient({
         .hamburger-btn{background:none;border:none;cursor:pointer;padding:8px;border-radius:10px;color:#003580;display:flex;align-items:center;justify-content:center;transition:background .2s;min-width:40px;min-height:40px}
         .hamburger-btn:hover{background:rgba(0,53,128,.08)}
         .sidebar-overlay{display:none}
-        @media(max-width:700px){.sidebar-overlay{display:block;position:fixed;inset:0;background:rgba(0,30,80,.4);backdrop-filter:blur(3px);z-index:59}}
-        @media(max-width:700px){.sidebar-close-mobile{display:flex!important}}
+        @media(max-width:768px){.sidebar-overlay{display:block;position:fixed;inset:0;background:rgba(0,30,80,.4);backdrop-filter:blur(3px);z-index:59}}
+        @media(max-width:768px){.sidebar-close-mobile{display:flex!important}}
 
         /* ── hub card ── */
         .hub-card{background:#ffffff;border:1px solid rgba(0,53,128,0.12);border-radius:20px;overflow:hidden}
