@@ -272,17 +272,21 @@ export default function LandingPage() {
           padding:0 1.5rem 1.25rem; font-size:.9rem; color:#3d5080; line-height:1.7;
         }
         @media(max-width:768px) {
-          .lp-hero-title { font-size:2.4rem !important; }
+          .lp-hero-title { font-size:2.1rem !important; line-height: 1.1 !important; }
           .lp-features-grid { grid-template-columns: 1fr !important; }
           .lp-steps-grid { grid-template-columns: 1fr !important; }
           .lp-threats-grid { grid-template-columns: 1fr !important; }
           .lp-stats-grid { grid-template-columns: 1fr 1fr !important; }
-          .lp-hero-btns { flex-direction: column !important; }
+          .lp-hero-btns { flex-direction: column !important; width: 100%; }
+          .lp-hero-btns a { width: 100%; justify-content: center; }
           .lp-desktop-nav { display: none !important; }
           .lp-mobile-btn { display: flex !important; }
-          .lp-hero-visual { display: none !important; }
+          .lp-hero-visual { display: block !important; margin-top: 3rem; }
+          .lp-hero-wrap { flex-direction: column !important; text-align: center; }
+          .lp-hero-content { align-items: center !important; }
+          .lp-hero-desc { margin: 1.2rem auto 2rem !important; font-size: 1.05rem !important; }
           .lp-section-pad { padding: 4rem 1.25rem !important; }
-          .lp-hero-pad { padding: 6rem 1.25rem 3rem !important; }
+          .lp-hero-pad { padding: 5rem 1.25rem 2rem !important; }
         }
       `}</style>
 
