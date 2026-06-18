@@ -13,12 +13,16 @@ export default async function DashboardPage() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: factors } = await supabase.auth.mfa.listFactors()
-  if (!factors || factors.totp.length === 0) {
-    redirect('/mfa-setup?mandatory=true')
-  }
+  // Only enforce TOTP MFA for email/password users.
+  // Google OAuth users are already protected by Google's own 2FA.
+  const isEmailUser = user.app_metadata.provider === 'email'
 
-  if (user.app_metadata.provider === 'email') {
+  if (isEmailUser) {
+    const { data: factors } = await supabase.auth.mfa.listFactors()
+    if (!factors || factors.totp.length === 0) {
+      redirect('/mfa-setup?mandatory=true')
+    }
+
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
     if (aal?.nextLevel === 'aal2' && aal.currentLevel === 'aal1') {
       redirect('/login')
