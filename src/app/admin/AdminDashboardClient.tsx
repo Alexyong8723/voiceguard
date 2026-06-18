@@ -220,7 +220,7 @@ export default function AdminDashboardClient({
 }: Props) {
   const router = useRouter()
   const [activeTab,   setActiveTab]   = useState<NavTab>('overview')
-  
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)  
   // Videos state
   const [showAddVid, setShowAddVid] = useState(false)
   const [newVid, setNewVid] = useState({ id: '', title: '', channel: '', tag: '' })
@@ -649,19 +649,77 @@ export default function AdminDashboardClient({
         @media(max-width:900px){ .bottom-row{grid-template-columns:1fr} }
 
         /* ── Responsive ─────────────────────────────── */
+        /* ── Responsive ─────────────────────────────── */
         @media(max-width:768px){
-          .admin-sidebar { display:none; }
+          .admin-sidebar {
+            position:fixed; left:0; top:0; width:240px; height:100vh;
+            z-index:60; transform:translateX(-100%);
+            transition:transform .28s cubic-bezier(.16,1,.3,1);
+            box-shadow:4px 0 32px rgba(0,0,0,.5);
+            overflow:hidden;
+          }
+          .admin-sidebar.mobile-open { transform:translateX(0); }
           .admin-content { padding:1rem; }
+          .admin-main { width:100%; }
           .admin-topbar  { padding:.875rem 1rem; }
           .kpi-grid      { grid-template-columns:repeat(2,1fr); }
+          .mobile-top-bar { display:flex; }
         }
         @media(max-width:480px){
           .kpi-grid { grid-template-columns:1fr; }
         }
+
+        .mobile-top-bar {
+          display:none; align-items:center; justify-content:space-between;
+          padding:.75rem 1rem; background:rgba(15,15,26,.92); backdrop-filter:blur(12px);
+          border-bottom:1px solid rgba(255,255,255,.06); position:sticky; top:0; z-index:30;
+        }
+        .hamburger-btn {
+          background:none; border:none; cursor:pointer; padding:8px; border-radius:10px;
+          color:#e2e8f0; display:flex; align-items:center; justify-content:center;
+          transition:background .2s; min-width:40px; min-height:40px;
+        }
+        .hamburger-btn:hover { background:rgba(255,255,255,.08); }
+        .sidebar-overlay { display:none; }
+        @media(max-width:768px){
+          .sidebar-overlay { display:block; position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(3px); z-index:59; }
+          .sidebar-close-mobile { display:flex !important; }
+        }
       `}</style>
 
+      {/* ── Mobile top bar (hamburger) ── */}
+      <div className="mobile-top-bar">
+        <button className="hamburger-btn" onClick={() => setMobileMenuOpen(true)} aria-label="Open menu">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+          </svg>
+        </button>
+        <div style={{display:'flex',alignItems:'center',gap:8}}>
+          <div style={{width:32,height:32,borderRadius:9,background:'linear-gradient(135deg,#667eea,#764ba2)',display:'flex',alignItems:'center',justifyContent:'center',color:'white'}}>
+            <ShieldIcon s={16}/>
+          </div>
+          <span style={{fontWeight:800,fontSize:'.95rem',color:'#e2e8f0'}}>Admin</span>
+        </div>
+        <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#667eea,#764ba2)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.85rem',fontWeight:800,color:'white'}}>{initials}</div>
+      </div>
+
+      {/* ── Mobile sidebar overlay backdrop ── */}
+      {mobileMenuOpen && (
+        <div className="sidebar-overlay" onClick={() => setMobileMenuOpen(false)} />
+      )}
+
+      <div style={{display:'flex',flex:1,minWidth:0}}>
+
       {/* ── Sidebar ──────────────────────────────────────────────────────────── */}
-      <aside className="admin-sidebar">
+      <aside className={`admin-sidebar${mobileMenuOpen ? ' mobile-open' : ''}`}>
+        <button
+          onClick={() => setMobileMenuOpen(false)}
+          style={{display:'none',position:'absolute',top:12,right:12,background:'none',border:'none',cursor:'pointer',padding:6,borderRadius:8,color:'#94a3b8'}}
+          className="sidebar-close-mobile" aria-label="Close menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+          </svg>
+        </button>
         <div className="sidebar-logo">
           <div className="sidebar-logo-icon"><ShieldIcon s={18} /></div>
           <div>
@@ -671,22 +729,22 @@ export default function AdminDashboardClient({
         </div>
 
         <div className="sidebar-section-label">Navigation</div>
-        <button className={`nav-btn${activeTab==='overview'?' active':''}`} onClick={()=>setActiveTab('overview')}>
+        <button className={`nav-btn${activeTab==='overview'?' active':''}`} onClick={()=>{setActiveTab('overview');setMobileMenuOpen(false);}}>
           <GridIcon s={18} />Overview
         </button>
-        <button className={`nav-btn${activeTab==='users'?' active':''}`} onClick={()=>setActiveTab('users')}>
+        <button className={`nav-btn${activeTab==='users'?' active':''}`} onClick={()=>{setActiveTab('users');setMobileMenuOpen(false);}}>
           <UsersIcon s={18} />Users
           <span style={{marginLeft:'auto',background:'rgba(102,126,234,.2)',color:'#a5b4fc',fontSize:'.7rem',fontWeight:700,padding:'2px 7px',borderRadius:6}}>
             {users.length}
           </span>
         </button>
-        <button className={`nav-btn${activeTab==='detections'?' active':''}`} onClick={()=>setActiveTab('detections')}>
+        <button className={`nav-btn${activeTab==='detections'?' active':''}`} onClick={()=>{setActiveTab('detections');setMobileMenuOpen(false);}}>
           <ShieldCheckIcon s={18} />Detections
         </button>
-        <button className={`nav-btn${activeTab==='logs'?' active':''}`} onClick={()=>setActiveTab('logs')}>
+        <button className={`nav-btn${activeTab==='logs'?' active':''}`} onClick={()=>{setActiveTab('logs');setMobileMenuOpen(false);}}>
           <LogFileIcon s={18} />Audit Logs
         </button>
-        <button className={`nav-btn${activeTab==='videos'?' active':''}`} onClick={()=>setActiveTab('videos')}>
+        <button className={`nav-btn${activeTab==='videos'?' active':''}`} onClick={()=>{setActiveTab('videos');setMobileMenuOpen(false);}}>
           <ShieldIcon s={18} />Videos
         </button>
 
@@ -1409,6 +1467,7 @@ export default function AdminDashboardClient({
 
         </div>
       </main>
+      </div>{/* flex row wrapper */}
     </div>
   )
 }
