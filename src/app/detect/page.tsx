@@ -487,7 +487,7 @@ export default function DetectPage() {
           </div>
           <span style={{fontWeight:800,fontSize:'.95rem',color:'#003580'}}>VoiceGuard</span>
         </div>
-        <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#003580,#1a4fa0)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.85rem',fontWeight:700,color:'white'}}>
+        <div style={{width:36,height:36,borderRadius:'50%',background:'linear-gradient(135deg,#003580,#1a4fa0)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'.85rem',fontWeight:700,color:'white',cursor:'pointer'}} onClick={() => window.dispatchEvent(new CustomEvent('open-profile-panel'))}>
           U
         </div>
       </div>

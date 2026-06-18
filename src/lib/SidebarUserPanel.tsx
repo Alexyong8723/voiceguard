@@ -73,7 +73,14 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
     supabase.auth.getUser().then(({ data }) => {
       if (data?.user?.email) setUserEmail(data.user.email)
     }).catch(() => { /* silently keep placeholder */ })
-  }, [emailProp]) 
+  }, [emailProp])
+
+  // Listen for global open events from mobile top bar
+  useEffect(() => {
+    const handler = () => { setOpen(true); setTab('profile') }
+    window.addEventListener('open-profile-panel', handler)
+    return () => window.removeEventListener('open-profile-panel', handler)
+  }, []) 
 
   // Apply display settings to document root
   const applyDisplay = (large: boolean, contrast: boolean, simplified: boolean) => {
