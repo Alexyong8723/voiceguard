@@ -650,6 +650,19 @@ export default function AdminDashboardClient({
 
         /* ── Responsive ─────────────────────────────── */
         /* ── Responsive ─────────────────────────────── */
+        .mobile-top-bar {
+          display:none; align-items:center; justify-content:space-between;
+          padding:.75rem 1rem; background:rgba(15,15,26,.92); backdrop-filter:blur(12px);
+          border-bottom:1px solid rgba(255,255,255,.06); position:sticky; top:0; z-index:30;
+        }
+        .hamburger-btn {
+          background:none; border:none; cursor:pointer; padding:8px; border-radius:10px;
+          color:#e2e8f0; display:flex; align-items:center; justify-content:center;
+          transition:background .2s; min-width:40px; min-height:40px;
+        }
+        .hamburger-btn:hover { background:rgba(255,255,255,.08); }
+        .sidebar-overlay { display:none; }
+
         @media(max-width:768px){
           .admin-sidebar {
             position:fixed; left:0; top:0; width:240px; height:100vh;
@@ -664,26 +677,11 @@ export default function AdminDashboardClient({
           .admin-topbar  { padding:.875rem 1rem; }
           .kpi-grid      { grid-template-columns:repeat(2,1fr); }
           .mobile-top-bar { display:flex; }
+          .sidebar-overlay { display:block; position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(3px); z-index:59; }
+          .sidebar-close-mobile { display:flex !important; }
         }
         @media(max-width:480px){
           .kpi-grid { grid-template-columns:1fr; }
-        }
-
-        .mobile-top-bar {
-          display:none; align-items:center; justify-content:space-between;
-          padding:.75rem 1rem; background:rgba(15,15,26,.92); backdrop-filter:blur(12px);
-          border-bottom:1px solid rgba(255,255,255,.06); position:sticky; top:0; z-index:30;
-        }
-        .hamburger-btn {
-          background:none; border:none; cursor:pointer; padding:8px; border-radius:10px;
-          color:#e2e8f0; display:flex; align-items:center; justify-content:center;
-          transition:background .2s; min-width:40px; min-height:40px;
-        }
-        .hamburger-btn:hover { background:rgba(255,255,255,.08); }
-        .sidebar-overlay { display:none; }
-        @media(max-width:768px){
-          .sidebar-overlay { display:block; position:fixed; inset:0; background:rgba(0,0,0,.6); backdrop-filter:blur(3px); z-index:59; }
-          .sidebar-close-mobile { display:flex !important; }
         }
       `}</style>
 

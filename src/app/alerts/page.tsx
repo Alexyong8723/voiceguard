@@ -233,18 +233,19 @@ export default function AlertsPage() {
         /* Sidebar */
         .a-sidebar{width:240px;min-height:100vh;background:#ffffff;border-right:1px solid rgba(0,53,128,0.12);display:flex;flex-direction:column;padding:1.5rem 1rem;position:sticky;top:0;z-index:20;flex-shrink:0;box-shadow:2px 0 12px rgba(0,53,128,0.06)}
         .a-main{flex:1;min-width:0;padding:2rem 2.5rem;overflow-x:hidden;max-width:940px}
+        .mobile-top-bar{display:none;align-items:center;justify-content:space-between;padding:.75rem 1rem;background:#fff;border-bottom:1px solid rgba(0,53,128,.1);position:sticky;top:0;z-index:30;box-shadow:0 2px 8px rgba(0,53,128,.06)}
+        .hamburger-btn{background:none;border:none;cursor:pointer;padding:8px;border-radius:10px;color:#003580;display:flex;align-items:center;justify-content:center;transition:background .2s;min-width:40px;min-height:40px}
+        .hamburger-btn:hover{background:rgba(0,53,128,.08)}
+        .sidebar-overlay{display:none}
+
         @media(max-width:768px){
           .a-sidebar{position:fixed;left:0;top:0;width:240px;height:100vh;z-index:60;transform:translateX(-100%);transition:transform .28s cubic-bezier(.16,1,.3,1);box-shadow:4px 0 32px rgba(0,30,80,.18);overflow:hidden}
           .a-sidebar.mobile-open{transform:translateX(0)}
           .a-main{padding:1rem 1rem 5rem;width:100%}
           .mobile-top-bar{display:flex}
+          .sidebar-overlay{display:block;position:fixed;inset:0;background:rgba(0,30,80,.4);backdrop-filter:blur(3px);z-index:59}
+          .sidebar-close-mobile{display:flex!important}
         }
-        .mobile-top-bar{display:none;align-items:center;justify-content:space-between;padding:.75rem 1rem;background:#fff;border-bottom:1px solid rgba(0,53,128,.1);position:sticky;top:0;z-index:30;box-shadow:0 2px 8px rgba(0,53,128,.06)}
-        .hamburger-btn{background:none;border:none;cursor:pointer;padding:8px;border-radius:10px;color:#003580;display:flex;align-items:center;justify-content:center;transition:background .2s;min-width:40px;min-height:40px}
-        .hamburger-btn:hover{background:rgba(0,53,128,.08)}
-        .sidebar-overlay{display:none}
-        @media(max-width:768px){.sidebar-overlay{display:block;position:fixed;inset:0;background:rgba(0,30,80,.4);backdrop-filter:blur(3px);z-index:59}}
-        @media(max-width:768px){.sidebar-close-mobile{display:flex!important}}
 
         .nav-item{display:flex;align-items:center;gap:12px;padding:13px 14px;border-radius:12px;font-size:1rem;font-weight:600;color:#3d5080;text-decoration:none;cursor:pointer;transition:background .2s,color .2s;border:none;background:none;width:100%;text-align:left;margin-bottom:4px;font-family:'Inter',sans-serif;min-height:50px}
         .nav-item:hover:not(.nav-disabled){background:rgba(0,53,128,0.07);color:#003580}
