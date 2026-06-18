@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { createPortal } from 'react-dom'
 import { useLang, LanguageSwitcher } from '@/lib/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import { logout } from '@/app/auth/actions'
@@ -222,16 +223,16 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
       </div>
 
       {/* ── Profile panel overlay ── */}
-      {open && (
+      {open && typeof document !== 'undefined' && createPortal(
         <>
           {/* Backdrop */}
           <div
             onClick={() => setOpen(false)}
-            style={{ position: 'fixed', inset: 0, background: 'rgba(0,30,80,.35)', backdropFilter: 'blur(3px)', zIndex: 40 }}
+            style={{ position: 'fixed', inset: 0, background: 'rgba(0,30,80,.35)', backdropFilter: 'blur(3px)', zIndex: 99990 }}
           />
 
           {/* Panel */}
-          <div className="sup-panel">
+          <div className="sup-panel" style={{ zIndex: 99999 }}>
 
             {/* Header */}
             <div className="sup-panel-head">
@@ -412,7 +413,8 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
 
             </div>{/* end content */}
           </div>{/* end panel */}
-        </>
+        </>,
+        document.body
       )}
     </>
   )
