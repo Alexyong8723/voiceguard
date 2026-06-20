@@ -277,16 +277,28 @@ export default function LandingPage() {
           .lp-steps-grid { grid-template-columns: 1fr !important; }
           .lp-threats-grid { grid-template-columns: 1fr !important; }
           .lp-stats-grid { grid-template-columns: 1fr 1fr !important; }
+          .lp-stat-card { padding: 1.1rem 0.75rem !important; }
+          .lp-stat-card > div:first-child { font-size: 1.6rem !important; }
           .lp-hero-btns { flex-direction: column !important; width: 100%; }
-          .lp-hero-btns a { width: 100%; justify-content: center; }
+          .lp-hero-btns a, .lp-hero-btns button { width: 100%; justify-content: center; }
           .lp-desktop-nav { display: none !important; }
           .lp-mobile-btn { display: flex !important; }
-          .lp-hero-visual { display: block !important; margin-top: 3rem; }
+          .lp-hero-visual { display: block !important; margin-top: 2rem; overflow: hidden; }
           .lp-hero-wrap { flex-direction: column !important; text-align: center; }
           .lp-hero-content { align-items: center !important; }
           .lp-hero-desc { margin: 1.2rem auto 2rem !important; font-size: 1.05rem !important; }
           .lp-section-pad { padding: 4rem 1.25rem !important; }
           .lp-hero-pad { padding: 5rem 1.25rem 2rem !important; }
+          .lp-hero-grid { grid-template-columns: 1fr !important; gap: 0 !important; }
+          .lp-demo-grid { grid-template-columns: 1fr !important; gap: 1rem !important; }
+          .lp-footer-grid { grid-template-columns: 1fr 1fr !important; }
+          .lp-footer-bottom { flex-direction: column !important; align-items: flex-start !important; }
+          .lp-hero-shield { width: 260px !important; height: 280px !important; }
+          .lp-section-h2 { font-size: 1.8rem !important; }
+          .lp-cta-h2 { font-size: 1.9rem !important; }
+          .lp-cta-btns { flex-direction: column !important; align-items: stretch !important; }
+          .lp-cta-btns a { justify-content: center !important; }
+          .lp-demo-section { padding: 3.5rem 1.25rem !important; }
         }
       `}</style>
 
@@ -366,7 +378,7 @@ export default function LandingPage() {
         {/* Grid */}
         <div style={{ position: 'absolute', inset: 0, backgroundImage: 'linear-gradient(rgba(0,53,128,.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,53,128,.03) 1px,transparent 1px)', backgroundSize: '40px 40px', pointerEvents: 'none' }} />
 
-        <div className="lp-hero-pad" style={{ maxWidth: 1200, margin: '0 auto', padding: '8rem 2rem 4rem', width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', alignItems: 'center', gap: '4rem', position: 'relative', zIndex: 2 }}>
+        <div className="lp-hero-pad lp-hero-grid" style={{ maxWidth: 1200, margin: '0 auto', padding: '8rem 2rem 4rem', width: '100%', display: 'grid', gridTemplateColumns: '1fr 1fr', alignItems: 'center', gap: '4rem', position: 'relative', zIndex: 2 }}>
           {/* Left: copy */}
           <div style={{ animation: 'fadeUp .7s ease both' }}>
             {/* Badge */}
@@ -407,7 +419,7 @@ export default function LandingPage() {
           {/* Right: visual */}
           <div className="lp-hero-visual" style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', animation: 'fadeUp .9s ease .2s both' }}>
             {/* Shield visual */}
-            <div style={{ position: 'relative', width: 380, height: 420 }}>
+            <div className="lp-hero-shield" style={{ position: 'relative', width: 380, height: 420 }}>
               {/* Glowing rings */}
               {[1.4, 1.2, 1.0].map((scale, i) => (
                 <div key={i} style={{
@@ -569,7 +581,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── HOW IT WORKS ─────────────────────────────────────────────────────── */}
-      <section id="how-it-works" style={{ padding: '6rem 2rem', background: '#ffffff' }}>
+      <section id="how-it-works" className="lp-section-pad" style={{ padding: '6rem 2rem', background: '#ffffff' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
           <div style={{ textAlign: 'center', marginBottom: '3.5rem' }}>
             <div style={{ display: 'inline-flex', alignItems: 'center', gap: 7, background: 'rgba(0,53,128,.08)', border: '1px solid rgba(0,53,128,.15)', borderRadius: 99, padding: '5px 16px', marginBottom: '1rem' }}>
@@ -628,7 +640,7 @@ export default function LandingPage() {
       </section>
 
       {/* ── AUDIO DEMO VISUAL ────────────────────────────────────────────────── */}
-      <section style={{ padding: '5rem 2rem', background: 'linear-gradient(145deg,#0d1a3a,#003580)' }}>
+      <section className="lp-demo-section" style={{ padding: '5rem 2rem', background: 'linear-gradient(145deg,#0d1a3a,#003580)' }}>
         <div style={{ maxWidth: 860, margin: '0 auto', textAlign: 'center' }}>
           <h2 style={{ fontSize: '2rem', fontWeight: 900, color: '#ffffff', letterSpacing: '-0.03em', marginBottom: '.75rem' }}>
             See the AI Detector in Action
@@ -639,7 +651,7 @@ export default function LandingPage() {
 
           {/* Fake detector UI */}
           <div style={{ background: 'rgba(255,255,255,.05)', border: '1px solid rgba(255,255,255,.12)', borderRadius: 24, padding: '2rem', backdropFilter: 'blur(10px)' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
+            <div className="lp-demo-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem', marginBottom: '1.5rem' }}>
               {/* Real audio */}
               <div style={{ background: 'rgba(0,135,90,.12)', border: '1px solid rgba(0,135,90,.3)', borderRadius: 16, padding: '1.25rem' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: '1rem' }}>
@@ -763,7 +775,7 @@ export default function LandingPage() {
           <p style={{ fontSize: '1.05rem', color: 'rgba(255,255,255,.7)', lineHeight: 1.7, marginBottom: '2.5rem' }}>
             Join thousands of Malaysians who trust VoiceGuard to detect voice scams before they cause harm. Free to use, always.
           </p>
-          <div style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
+          <div className="lp-cta-btns" style={{ display: 'flex', gap: 14, justifyContent: 'center', flexWrap: 'wrap' }}>
             <Link href="/signup" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, background: '#ffffff', color: '#003580', border: 'none', borderRadius: 12, padding: '15px 32px', fontSize: '1rem', fontWeight: 800, cursor: 'pointer', textDecoration: 'none', boxShadow: '0 8px 28px rgba(0,0,0,.2)', transition: 'transform .2s, box-shadow .2s' }}
               onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = '0 12px 36px rgba(0,0,0,.3)' }}
               onMouseLeave={e => { e.currentTarget.style.transform = ''; e.currentTarget.style.boxShadow = '0 8px 28px rgba(0,0,0,.2)' }}>
@@ -781,7 +793,7 @@ export default function LandingPage() {
       {/* ── FOOTER ───────────────────────────────────────────────────────────── */}
       <footer style={{ background: '#0d1a3a', padding: '3rem 2rem 2rem', color: 'rgba(255,255,255,.55)' }}>
         <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-          <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr', gap: '2rem', marginBottom: '2.5rem' }}>
+          <div className="lp-footer-grid" style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr 1fr 1fr', gap: '2rem', marginBottom: '2.5rem' }}>
             {/* Brand */}
             <div>
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: '1rem' }}>
