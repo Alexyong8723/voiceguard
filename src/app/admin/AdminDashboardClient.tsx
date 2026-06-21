@@ -1475,13 +1475,16 @@ export default function AdminDashboardClient({
                   <div style={{display:'flex', gap:8, alignItems:'center'}}>
                     <button
                       onClick={handleAddVideo}
-                      disabled={isAddingVid || !newVid.id || !newVid.title || !newVid.tag || thumbValid === false}
-                      style={{background:thumbValid===true?'#34d399':'rgba(52,211,153,.35)', color:thumbValid===true?'#022c22':'#94a3b8', border:'none', borderRadius:8, padding:'9px 20px', fontSize:'.88rem', fontWeight:700, cursor:(isAddingVid||thumbValid!==true)?'default':'pointer', opacity:(isAddingVid||!newVid.id||thumbValid!==true)?0.55:1, fontFamily:"'Inter',sans-serif"}}
+                      disabled={isAddingVid || !newVid.id || !newVid.title || !newVid.channel || !newVid.tag || thumbValid === false}
+                      style={{background:thumbValid===true?'#34d399':'rgba(52,211,153,.35)', color:thumbValid===true?'#022c22':'#94a3b8', border:'none', borderRadius:8, padding:'9px 20px', fontSize:'.88rem', fontWeight:700, cursor:(isAddingVid||thumbValid!==true)?'default':'pointer', opacity:(isAddingVid||!newVid.id||!newVid.title||!newVid.channel||!newVid.tag||thumbValid!==true)?0.55:1, fontFamily:"'Inter',sans-serif"}}
                     >
                       {isAddingVid ? '⏳ Saving…' : '✅ Save Video'}
                     </button>
-                    {thumbValid === true && !isAddingVid && (
+                    {thumbValid === true && !isAddingVid && (newVid.title && newVid.channel && newVid.tag) && (
                       <span style={{fontSize:'.78rem', color:'#34d399'}}>Video verified & ready to save</span>
+                    )}
+                    {thumbValid === true && !isAddingVid && (!newVid.title || !newVid.channel || !newVid.tag) && (
+                      <span style={{fontSize:'.78rem', color:'#fbbf24'}}>⚠️ Please fill in all fields (Title, Channel, Tag) to save</span>
                     )}
                     {thumbValid === false && (
                       <span style={{fontSize:'.78rem', color:'#f87171'}}>Video is unavailable — cannot save</span>
