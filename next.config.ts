@@ -37,13 +37,13 @@ const securityHeaders = [
       // Fonts
       "font-src 'self' https://fonts.gstatic.com",
       // Images: same-origin + data URIs
-      "img-src 'self' data: blob:",
+      "img-src 'self' data: blob: https://img.youtube.com https://i.ytimg.com",
       // Media: same-origin + blob (for recorded audio)
       "media-src 'self' blob:",
       // API connections: same-origin + Supabase + Google APIs + Groq
       "connect-src 'self' https://*.supabase.co https://generativelanguage.googleapis.com https://accounts.google.com https://oauth2.googleapis.com https://openidconnect.googleapis.com https://api.groq.com",
       // Frame source: allow Google OAuth
-      "frame-src https://accounts.google.com",
+      "frame-src https://accounts.google.com https://www.youtube.com https://youtube.com",
       // No plugins, no objects
       "object-src 'none'",
       // Base URI restriction
