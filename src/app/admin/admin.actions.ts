@@ -1080,3 +1080,99 @@ export async function sendCustomReport(
     return { ok: false, error: err.message }
   }
 }
+
+// ── Alerts Management ─────────────────────────────────────────────────────────
+export interface AlertItem {
+  id: string
+  type: 'critical' | 'warning' | 'trend' | 'info' | 'tip'
+  title: string
+  body: string
+  source: string
+  region: string
+  category: string
+  actionLabel?: string
+  actionUrl?: string
+  isNew: boolean
+  tags: string[]
+  created_at?: string
+}
+
+export async function fetchAdminAlerts(): Promise<AlertItem[]> {
+  const admin = createAdminClient()
+  const { data, error } = await admin
+    .from('alerts')
+    .select('*')
+    .order('created_at', { ascending: false })
+  
+  if (error || !data) return []
+  return data.map((a: any) => ({
+    id: String(a.id),
+    type: a.type,
+    title: a.title,
+    body: a.body,
+    source: a.source,
+    region: a.region,
+    category: a.category || '',
+    actionLabel: a.action_label || undefined,
+    actionUrl: a.action_url || undefined,
+    isNew: a.is_new,
+    tags: a.tags || [],
+    created_at: a.created_at,
+  }))
+}
+
+export async function addAdminAlert(alertData: Partial<AlertItem>): Promise<{ success: boolean; error?: string }> {
+  const { isAdmin } = await verifyAdminSession()
+  if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('alerts').insert({
+    type: alertData.type,
+    title: alertData.title,
+    body: alertData.body,
+    source: alertData.source,
+    region: alertData.region,
+    category: alertData.category,
+    action_label: alertData.actionLabel,
+    action_url: alertData.actionUrl,
+    is_new: alertData.isNew ?? true,
+    tags: alertData.tags ?? []
+  })
+
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function updateAdminAlert(id: string, alertData: Partial<AlertItem>): Promise<{ success: boolean; error?: string }> {
+  const { isAdmin } = await verifyAdminSession()
+  if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+  const supabase = await createClient()
+  const updatePayload: any = {}
+  if (alertData.type) updatePayload.type = alertData.type
+  if (alertData.title) updatePayload.title = alertData.title
+  if (alertData.body) updatePayload.body = alertData.body
+  if (alertData.source) updatePayload.source = alertData.source
+  if (alertData.region) updatePayload.region = alertData.region
+  if (alertData.category !== undefined) updatePayload.category = alertData.category
+  if (alertData.actionLabel !== undefined) updatePayload.action_label = alertData.actionLabel
+  if (alertData.actionUrl !== undefined) updatePayload.action_url = alertData.actionUrl
+  if (alertData.isNew !== undefined) updatePayload.is_new = alertData.isNew
+  if (alertData.tags) updatePayload.tags = alertData.tags
+
+  const { error } = await supabase.from('alerts').update(updatePayload).eq('id', id)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}
+
+export async function removeAdminAlert(id: string): Promise<{ success: boolean; error?: string }> {
+  const { isAdmin } = await verifyAdminSession()
+  if (!isAdmin) return { success: false, error: 'Unauthorized' }
+
+  const supabase = await createClient()
+  const { error } = await supabase.from('alerts').delete().eq('id', id)
+
+  if (error) return { success: false, error: error.message }
+  return { success: true }
+}

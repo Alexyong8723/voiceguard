@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useTransition } from 'react'
 import { logout } from '@/app/auth/actions'
-import { sendWeeklyReport, sendCustomReport, addAdminVideo, removeAdminVideo } from './admin.actions'
+import { sendWeeklyReport, sendCustomReport, addAdminVideo, removeAdminVideo, addAdminAlert, removeAdminAlert } from './admin.actions'
 import type {
   AdminUser,
   AdminStats,
@@ -10,6 +10,7 @@ import type {
   UsersByLevel,
   DailyActivity,
   VideoItem,
+  AlertItem,
 } from './admin.actions'
 import { useRouter } from 'next/navigation'
 
@@ -83,10 +84,11 @@ interface Props {
   usersByLevel:  UsersByLevel[]
   dailyActivity: DailyActivity[]
   videos:        VideoItem[]
+  alerts:        AlertItem[]
 }
 
 type SortKey = 'full_name' | 'email' | 'level' | 'total_points' | 'streak_days' | 'created_at' | 'last_sign_in_at'
-type NavTab  = 'overview' | 'users' | 'detections' | 'logs' | 'videos'
+type NavTab  = 'overview' | 'users' | 'detections' | 'logs' | 'videos' | 'alerts'
 
 // ── KPI Card ──────────────────────────────────────────────────────────────────
 function KpiCard({
@@ -216,11 +218,51 @@ function ActivityChart({ data }: { data: DailyActivity[] }) {
 
 // ── Main Component ─────────────────────────────────────────────────────────────
 export default function AdminDashboardClient({
-  adminName, adminEmail, users, stats, auditLogs, usersByLevel, dailyActivity, videos,
+  adminName, adminEmail, users, stats, auditLogs, usersByLevel, dailyActivity, videos, alerts,
 }: Props) {
   const router = useRouter()
   const [activeTab,   setActiveTab]   = useState<NavTab>('overview')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)  
+
+  // Alerts state
+  const [showAddAlert, setShowAddAlert] = useState(false)
+  const [newAlert, setNewAlert] = useState<Partial<AlertItem>>({ type: 'warning', title: '', body: '', source: '', region: 'Global', category: 'scam', tags: [], actionLabel: '', actionUrl: '' })
+  const [isAddingAlert, setIsAddingAlert] = useState(false)
+  const [isSendingPush, setIsSendingPush] = useState(false)
+
+  const handleAddAlert = async () => {
+    if (!newAlert.title || !newAlert.body || !newAlert.source) return alert('Title, Body, and Source are required')
+    setIsAddingAlert(true)
+    const res = await addAdminAlert({ ...newAlert, tags: typeof newAlert.tags === 'string' ? (newAlert.tags as string).split(',').map(s=>s.trim()) : newAlert.tags })
+    setIsAddingAlert(false)
+    if (res.success) { setShowAddAlert(false); setNewAlert({ type: 'warning', title: '', body: '', source: '', region: 'Global', category: 'scam' }); router.refresh() }
+    else alert(res.error)
+  }
+
+  const handleRemoveAlert = async (id: string) => {
+    if (!confirm('Remove this alert?')) return
+    await removeAdminAlert(id)
+    router.refresh()
+  }
+
+  const handleSendPush = async (alertData: AlertItem) => {
+    if (!confirm('Send this as a push notification to all subscribed users?')) return
+    setIsSendingPush(true)
+    try {
+      const res = await fetch('/api/push/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: alertData.title, body: alertData.body, url: '/alerts', tag: 'vg-alert' })
+      })
+      const data = await res.json()
+      if (data.success) alert(`Push sent successfully to ${data.sent} devices.`)
+      else alert('Failed: ' + data.error)
+    } catch (err: any) {
+      alert('Error sending push: ' + err.message)
+    }
+    setIsSendingPush(false)
+  }
+
   // Videos state
   const [showAddVid,   setShowAddVid]   = useState(false)
   const [vidUrlInput,  setVidUrlInput]  = useState('')          // raw URL/ID typed by admin
@@ -801,6 +843,9 @@ export default function AdminDashboardClient({
         <button className={`nav-btn${activeTab==='videos'?' active':''}`} onClick={()=>{setActiveTab('videos');setMobileMenuOpen(false);}}>
           <ShieldIcon s={18} />Videos
         </button>
+        <button className={`nav-btn${activeTab==='alerts'?' active':''}`} onClick={()=>{setActiveTab('alerts');setMobileMenuOpen(false);}}>
+          <AlertTriangle s={18} />Alerts
+        </button>
 
         <div className="sidebar-divider" />
 
@@ -830,6 +875,7 @@ export default function AdminDashboardClient({
                activeTab === 'users'    ? '👥 User Management' :
                activeTab === 'detections'? '🎙️ Voice Detections' :
                activeTab === 'videos'   ? '📺 Educational Videos' :
+               activeTab === 'alerts'   ? '🔔 Safety Alerts' :
                                           '📋 Audit Logs'}
             </div>
             <div className="topbar-subtitle">
@@ -841,6 +887,8 @@ export default function AdminDashboardClient({
                 ? `${stats.totalScans} AI scans analyzed`
                 : activeTab === 'videos'
                 ? `${videos.length} videos available`
+                : activeTab === 'alerts'
+                ? `${alerts.length} active alerts`
                 : `${auditLogs.length} recent events`}
             </div>
           </div>
@@ -1529,6 +1577,95 @@ export default function AdminDashboardClient({
                       <tr>
                         <td colSpan={5} style={{textAlign:'center', padding:'2rem', color:'#94a3b8', fontSize:'.85rem'}}>No videos available.</td>
                       </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )}
+
+          {/* ── ALERTS TAB ─────────────────────────────────────────────────── */}
+          {activeTab === 'alerts' && (
+            <div className="panel-card">
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}>
+                <div className="panel-title" style={{marginBottom:0}}>
+                  <span className="panel-title-accent" />
+                  Manage Global Alerts
+                </div>
+                <button
+                  onClick={() => setShowAddAlert(!showAddAlert)}
+                  style={{background:'linear-gradient(135deg,#667eea,#764ba2)', color:'white', border:'none', padding:'8px 16px', borderRadius:8, fontSize:'.85rem', fontWeight:700, cursor:'pointer'}}
+                >
+                  {showAddAlert ? 'Close' : '+ Add Alert'}
+                </button>
+              </div>
+
+              {showAddAlert && (
+                <div style={{background:'rgba(255,255,255,.03)', padding:'1.5rem', borderRadius:12, marginBottom:'1.5rem', border:'1px solid rgba(255,255,255,.06)'}}>
+                  <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12}}>
+                    <input type="text" placeholder="Title" value={newAlert.title} onChange={e=>setNewAlert({...newAlert, title: e.target.value})} className="search-input" />
+                    <select value={newAlert.type} onChange={e=>setNewAlert({...newAlert, type: e.target.value as any})} className="filter-select">
+                      <option value="critical">Critical</option>
+                      <option value="warning">Warning</option>
+                      <option value="trend">Trend</option>
+                      <option value="info">Info</option>
+                      <option value="tip">Tip</option>
+                    </select>
+                    <input type="text" placeholder="Source (e.g., PDRM)" value={newAlert.source} onChange={e=>setNewAlert({...newAlert, source: e.target.value})} className="search-input" />
+                    <input type="text" placeholder="Category (e.g., scam, vishing)" value={newAlert.category} onChange={e=>setNewAlert({...newAlert, category: e.target.value})} className="search-input" />
+                    <input type="text" placeholder="Action Label (optional)" value={newAlert.actionLabel} onChange={e=>setNewAlert({...newAlert, actionLabel: e.target.value})} className="search-input" />
+                    <input type="text" placeholder="Action URL (optional)" value={newAlert.actionUrl} onChange={e=>setNewAlert({...newAlert, actionUrl: e.target.value})} className="search-input" />
+                    <input type="text" placeholder="Tags (comma separated)" value={newAlert.tags} onChange={e=>setNewAlert({...newAlert, tags: e.target.value as any})} className="search-input" style={{gridColumn:'span 2'}} />
+                    <textarea placeholder="Alert Body/Description" value={newAlert.body} onChange={e=>setNewAlert({...newAlert, body: e.target.value})} className="search-input" rows={3} style={{gridColumn:'span 2', resize:'vertical'}} />
+                  </div>
+                  <button onClick={handleAddAlert} disabled={isAddingAlert} style={{background:'#34d399', color:'#064e3b', border:'none', padding:'8px 16px', borderRadius:8, fontSize:'.85rem', fontWeight:700, cursor:isAddingAlert?'not-allowed':'pointer'}}>
+                    {isAddingAlert ? 'Saving...' : 'Save Alert'}
+                  </button>
+                </div>
+              )}
+
+              <div className="data-table-wrap" style={{overflowX:'auto'}}>
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Type</th>
+                      <th>Alert Details</th>
+                      <th>Tags</th>
+                      <th style={{textAlign:'right'}}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {alerts.map(a => (
+                      <tr key={a.id}>
+                        <td>
+                          <span style={{background:a.type==='critical'?'rgba(239,68,68,.15)':a.type==='warning'?'rgba(245,158,11,.15)':'rgba(59,130,246,.15)', color:a.type==='critical'?'#ef4444':a.type==='warning'?'#f59e0b':'#3b82f6', padding:'4px 8px', borderRadius:6, fontSize:'.7rem', fontWeight:700, textTransform:'uppercase'}}>
+                            {a.type}
+                          </span>
+                        </td>
+                        <td>
+                          <div style={{fontWeight:600, color:'#e2e8f0', marginBottom:4}}>{a.title}</div>
+                          <div style={{fontSize:'.75rem', color:'#94a3b8'}}>{a.body.substring(0, 100)}...</div>
+                          <div style={{fontSize:'.7rem', color:'#64748b', marginTop:4}}>Source: {a.source}</div>
+                        </td>
+                        <td>
+                          <div style={{display:'flex', gap:4, flexWrap:'wrap', maxWidth:150}}>
+                            {a.tags?.map(t => <span key={t} style={{background:'rgba(255,255,255,.05)', padding:'2px 6px', borderRadius:4, fontSize:'.65rem'}}>{t}</span>)}
+                          </div>
+                        </td>
+                        <td style={{textAlign:'right'}}>
+                          <div style={{display:'flex', gap:8, justifyContent:'flex-end'}}>
+                            <button onClick={() => handleSendPush(a)} disabled={isSendingPush} style={{background:'rgba(167,139,250,.15)', color:'#a78bfa', border:'1px solid rgba(167,139,250,.3)', borderRadius:6, padding:'4px 8px', fontSize:'.75rem', fontWeight:600, cursor:isSendingPush?'not-allowed':'pointer'}}>
+                              Push
+                            </button>
+                            <button onClick={() => handleRemoveAlert(a.id)} style={{background:'rgba(248,113,113,.15)', color:'#f87171', border:'1px solid rgba(248,113,113,.3)', borderRadius:6, padding:'4px 8px', fontSize:'.75rem', fontWeight:600, cursor:'pointer'}}>
+                              Del
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {alerts.length === 0 && (
+                      <tr><td colSpan={4} style={{textAlign:'center', padding:'2rem', color:'#94a3b8', fontSize:'.85rem'}}>No alerts found.</td></tr>
                     )}
                   </tbody>
                 </table>
