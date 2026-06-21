@@ -222,14 +222,68 @@ export default function AdminDashboardClient({
   const [activeTab,   setActiveTab]   = useState<NavTab>('overview')
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)  
   // Videos state
-  const [showAddVid, setShowAddVid] = useState(false)
-  const [newVid, setNewVid] = useState({ id: '', title: '', channel: '', tag: '' })
-  const [vidError, setVidError] = useState('')
-  const [isAddingVid, setIsAddingVid] = useState(false)
+  const [showAddVid,   setShowAddVid]   = useState(false)
+  const [vidUrlInput,  setVidUrlInput]  = useState('')          // raw URL/ID typed by admin
+  const [newVid,       setNewVid]       = useState({ id: '', title: '', channel: '', tag: '' })
+  const [vidError,     setVidError]     = useState('')
+  const [isAddingVid,  setIsAddingVid]  = useState(false)
+  const [isFetching,   setIsFetching]   = useState(false)        // loading oEmbed
+  const [thumbValid,   setThumbValid]   = useState<boolean|null>(null) // null=unchecked
+
+  /** Extract an 11-char YouTube video ID from any URL format or bare ID */
+  function parseYtId(raw: string): string {
+    const s = raw.trim()
+    // youtu.be/ID or youtu.be/ID?si=...
+    const short = s.match(/youtu\.be\/([a-zA-Z0-9_-]{10,12})/)
+    if (short) return short[1]
+    // youtube.com/watch?v=ID
+    const watch = s.match(/[?&]v=([a-zA-Z0-9_-]{10,12})/)
+    if (watch) return watch[1]
+    // youtube.com/embed/ID or /shorts/ID
+    const embed = s.match(/(?:embed|shorts)\/([a-zA-Z0-9_-]{10,12})/)
+    if (embed) return embed[1]
+    // bare 11-char ID
+    if (/^[a-zA-Z0-9_-]{10,12}$/.test(s)) return s
+    return ''
+  }
+
+  /** Fetch title + channel via our oEmbed proxy, then validate thumbnail */
+  const fetchVideoMeta = async (rawInput: string) => {
+    const id = parseYtId(rawInput)
+    if (!id) {
+      setVidError('Could not extract a valid YouTube video ID from that URL.')
+      setThumbValid(null)
+      return
+    }
+    setVidError('')
+    setIsFetching(true)
+    setThumbValid(null)
+    setNewVid(v => ({ ...v, id, title: '', channel: '' }))
+    try {
+      const res = await fetch(`/api/oembed?id=${id}`)
+      const data = await res.json()
+      if (!res.ok) {
+        setVidError(data.error || 'Video is unavailable or private.')
+        setThumbValid(false)
+      } else {
+        setNewVid(v => ({ ...v, id, title: data.title, channel: data.author_name }))
+        setThumbValid(true)
+      }
+    } catch {
+      setVidError('Network error — could not verify video.')
+      setThumbValid(false)
+    } finally {
+      setIsFetching(false)
+    }
+  }
 
   const handleAddVideo = async () => {
     if (!newVid.id || !newVid.title || !newVid.channel || !newVid.tag) {
-      setVidError('All fields are required.')
+      setVidError('All fields are required. Use the "Fetch Info" button first.')
+      return
+    }
+    if (thumbValid === false) {
+      setVidError('Cannot save an unavailable or private video.')
       return
     }
     setVidError('')
@@ -238,7 +292,9 @@ export default function AdminDashboardClient({
     setIsAddingVid(false)
     if (res.success) {
       setShowAddVid(false)
+      setVidUrlInput('')
       setNewVid({ id: '', title: '', channel: '', tag: '' })
+      setThumbValid(null)
       router.refresh()
     } else {
       setVidError(res.error || 'Failed to add video')
@@ -1329,49 +1385,108 @@ export default function AdminDashboardClient({
               </div>
 
               {showAddVid && (
-                <div style={{background:'rgba(255,255,255,.05)', padding:16, borderRadius:12, marginBottom:20}}>
-                  <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12, marginBottom:12}}>
-                    <div>
-                      <label style={{fontSize:'.75rem', color:'#94a3b8', display:'block', marginBottom:4}}>YouTube Video ID</label>
+                <div style={{background:'rgba(255,255,255,.05)', padding:20, borderRadius:14, marginBottom:20, border:'1px solid rgba(255,255,255,.08)'}}>
+                  <div style={{fontSize:'.78rem', color:'#94a3b8', marginBottom:14, lineHeight:1.5}}>
+                    Paste any YouTube link (e.g. <code style={{background:'rgba(255,255,255,.07)',padding:'1px 6px',borderRadius:4,color:'#a5b4fc'}}>https://youtu.be/ABC123</code>) then click <strong style={{color:'#e2e8f0'}}>Fetch Info</strong> to auto-fill title and verify the video is public.
+                  </div>
+
+                  {/* Step 1: URL input + Fetch button */}
+                  <div style={{display:'flex', gap:8, marginBottom:16}}>
+                    <div style={{flex:1}}>
+                      <label style={{fontSize:'.75rem', color:'#94a3b8', display:'block', marginBottom:4}}>YouTube URL or Video ID *</label>
                       <input
-                        value={newVid.id} onChange={e=>setNewVid({...newVid, id: e.target.value})}
-                        placeholder="e.g. 3x1fy6LQNKU"
-                        style={{width:'100%', padding:'8px 12px', background:'rgba(0,0,0,.2)', border:'1px solid rgba(255,255,255,.1)', borderRadius:8, color:'white', fontSize:'.85rem'}}
+                        value={vidUrlInput}
+                        onChange={e => { setVidUrlInput(e.target.value); setThumbValid(null); setVidError('') }}
+                        onKeyDown={e => e.key === 'Enter' && fetchVideoMeta(vidUrlInput)}
+                        placeholder="https://youtu.be/4HmBZF_09V4  or  4HmBZF_09V4"
+                        style={{width:'100%', padding:'9px 12px', background:'rgba(0,0,0,.25)', border:`1px solid ${thumbValid===true ? 'rgba(52,211,153,.5)' : thumbValid===false ? 'rgba(248,113,113,.5)' : 'rgba(255,255,255,.12)'}`, borderRadius:8, color:'white', fontSize:'.85rem', fontFamily:"'Inter',sans-serif"}}
                       />
                     </div>
-                    <div>
-                      <label style={{fontSize:'.75rem', color:'#94a3b8', display:'block', marginBottom:4}}>Title</label>
-                      <input
-                        value={newVid.title} onChange={e=>setNewVid({...newVid, title: e.target.value})}
-                        placeholder="Video Title"
-                        style={{width:'100%', padding:'8px 12px', background:'rgba(0,0,0,.2)', border:'1px solid rgba(255,255,255,.1)', borderRadius:8, color:'white', fontSize:'.85rem'}}
-                      />
-                    </div>
-                    <div>
-                      <label style={{fontSize:'.75rem', color:'#94a3b8', display:'block', marginBottom:4}}>Channel Name</label>
-                      <input
-                        value={newVid.channel} onChange={e=>setNewVid({...newVid, channel: e.target.value})}
-                        placeholder="e.g. MCMC Malaysia"
-                        style={{width:'100%', padding:'8px 12px', background:'rgba(0,0,0,.2)', border:'1px solid rgba(255,255,255,.1)', borderRadius:8, color:'white', fontSize:'.85rem'}}
-                      />
-                    </div>
-                    <div>
-                      <label style={{fontSize:'.75rem', color:'#94a3b8', display:'block', marginBottom:4}}>Tag</label>
-                      <input
-                        value={newVid.tag} onChange={e=>setNewVid({...newVid, tag: e.target.value})}
-                        placeholder="e.g. 🇲🇾 Malay"
-                        style={{width:'100%', padding:'8px 12px', background:'rgba(0,0,0,.2)', border:'1px solid rgba(255,255,255,.1)', borderRadius:8, color:'white', fontSize:'.85rem'}}
-                      />
+                    <div style={{display:'flex', alignItems:'flex-end'}}>
+                      <button
+                        onClick={() => fetchVideoMeta(vidUrlInput)}
+                        disabled={isFetching || !vidUrlInput.trim()}
+                        style={{padding:'9px 18px', background:'linear-gradient(135deg,#6366f1,#8b5cf6)', color:'white', border:'none', borderRadius:8, fontSize:'.85rem', fontWeight:700, cursor:isFetching||!vidUrlInput.trim()?'default':'pointer', opacity:isFetching||!vidUrlInput.trim()?0.55:1, whiteSpace:'nowrap', fontFamily:"'Inter',sans-serif"}}
+                      >
+                        {isFetching ? '⏳ Fetching…' : '🔍 Fetch Info'}
+                      </button>
                     </div>
                   </div>
-                  {vidError && <div style={{color:'#f87171', fontSize:'.8rem', marginBottom:12}}>{vidError}</div>}
-                  <button
-                    onClick={handleAddVideo}
-                    disabled={isAddingVid}
-                    style={{background:'#34d399', color:'#022c22', border:'none', borderRadius:8, padding:'8px 16px', fontSize:'.85rem', fontWeight:700, cursor:isAddingVid ? 'default' : 'pointer', opacity:isAddingVid ? 0.7 : 1}}
-                  >
-                    {isAddingVid ? 'Adding...' : 'Save Video'}
-                  </button>
+
+                  {/* Step 2: preview + editable fields (shown once ID is resolved) */}
+                  {newVid.id && (
+                    <div style={{display:'grid', gridTemplateColumns:'120px 1fr', gap:16, alignItems:'start', background:'rgba(0,0,0,.15)', padding:14, borderRadius:10, marginBottom:14}}>
+                      {/* Thumbnail */}
+                      <div>
+                        <div style={{fontSize:'.7rem', color:'#4a5568', marginBottom:6, fontWeight:700, textTransform:'uppercase', letterSpacing:'.06em'}}>Preview</div>
+                        <div style={{position:'relative', borderRadius:8, overflow:'hidden', aspectRatio:'16/9', background:'#000'}}>
+                          <img
+                            src={`https://img.youtube.com/vi/${newVid.id}/mqdefault.jpg`}
+                            alt="thumbnail"
+                            style={{width:'100%', height:'100%', objectFit:'cover', display:'block'}}
+                            onError={() => setThumbValid(false)}
+                            onLoad={() => { if (thumbValid !== false) setThumbValid(true) }}
+                          />
+                          {thumbValid === true && (
+                            <div style={{position:'absolute', top:4, right:4, background:'rgba(52,211,153,.9)', borderRadius:'50%', width:20, height:20, display:'flex', alignItems:'center', justifyContent:'center', fontSize:'.7rem'}}>✓</div>
+                          )}
+                          {thumbValid === false && (
+                            <div style={{position:'absolute', inset:0, background:'rgba(248,113,113,.15)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'.65rem', color:'#f87171', fontWeight:700, textAlign:'center', padding:4}}>Unavailable</div>
+                          )}
+                        </div>
+                        <div style={{fontSize:'.65rem', color:'#4a5568', marginTop:4, textAlign:'center', fontFamily:'monospace'}}>{newVid.id}</div>
+                      </div>
+                      {/* Editable metadata */}
+                      <div style={{display:'flex', flexDirection:'column', gap:10}}>
+                        <div>
+                          <label style={{fontSize:'.72rem', color:'#94a3b8', display:'block', marginBottom:3}}>Title (auto-filled, editable)</label>
+                          <input
+                            value={newVid.title} onChange={e=>setNewVid({...newVid, title: e.target.value})}
+                            placeholder="Video title"
+                            style={{width:'100%', padding:'7px 10px', background:'rgba(0,0,0,.2)', border:'1px solid rgba(255,255,255,.1)', borderRadius:7, color:'white', fontSize:'.84rem', fontFamily:"'Inter',sans-serif"}}
+                          />
+                        </div>
+                        <div>
+                          <label style={{fontSize:'.72rem', color:'#94a3b8', display:'block', marginBottom:3}}>Channel (auto-filled, editable)</label>
+                          <input
+                            value={newVid.channel} onChange={e=>setNewVid({...newVid, channel: e.target.value})}
+                            placeholder="Channel name"
+                            style={{width:'100%', padding:'7px 10px', background:'rgba(0,0,0,.2)', border:'1px solid rgba(255,255,255,.1)', borderRadius:7, color:'white', fontSize:'.84rem', fontFamily:"'Inter',sans-serif"}}
+                          />
+                        </div>
+                        <div>
+                          <label style={{fontSize:'.72rem', color:'#94a3b8', display:'block', marginBottom:3}}>Tag (category label)</label>
+                          <input
+                            value={newVid.tag} onChange={e=>setNewVid({...newVid, tag: e.target.value})}
+                            placeholder="e.g. 🇲🇾 Malay  or  AI Scam  or  Documentary"
+                            style={{width:'100%', padding:'7px 10px', background:'rgba(0,0,0,.2)', border:'1px solid rgba(255,255,255,.1)', borderRadius:7, color:'white', fontSize:'.84rem', fontFamily:"'Inter',sans-serif"}}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {vidError && (
+                    <div style={{color:'#f87171', fontSize:'.82rem', marginBottom:12, padding:'8px 12px', background:'rgba(248,113,113,.08)', border:'1px solid rgba(248,113,113,.2)', borderRadius:8}}>
+                      ⚠️ {vidError}
+                    </div>
+                  )}
+
+                  <div style={{display:'flex', gap:8, alignItems:'center'}}>
+                    <button
+                      onClick={handleAddVideo}
+                      disabled={isAddingVid || !newVid.id || !newVid.title || !newVid.tag || thumbValid === false}
+                      style={{background:thumbValid===true?'#34d399':'rgba(52,211,153,.35)', color:thumbValid===true?'#022c22':'#94a3b8', border:'none', borderRadius:8, padding:'9px 20px', fontSize:'.88rem', fontWeight:700, cursor:(isAddingVid||thumbValid!==true)?'default':'pointer', opacity:(isAddingVid||!newVid.id||thumbValid!==true)?0.55:1, fontFamily:"'Inter',sans-serif"}}
+                    >
+                      {isAddingVid ? '⏳ Saving…' : '✅ Save Video'}
+                    </button>
+                    {thumbValid === true && !isAddingVid && (
+                      <span style={{fontSize:'.78rem', color:'#34d399'}}>Video verified & ready to save</span>
+                    )}
+                    {thumbValid === false && (
+                      <span style={{fontSize:'.78rem', color:'#f87171'}}>Video is unavailable — cannot save</span>
+                    )}
+                  </div>
                 </div>
               )}
 

@@ -61,72 +61,16 @@ const NAV_HREFS = [
   { href:'/alerts',    icon:BellIcon,     active:false, disabled:false, badge:'', tKey:'nav_alerts'    as const },
   { href:'/detect',    icon:MicIcon,      active:false, disabled:false, badge:'', tKey:'nav_detect'    as const },
 ]
-// ── Educational YouTube videos — 50 videos, Malaysia-focused ──────────────
-// All video IDs are publicly available on YouTube.
-// Malay/Malaysia content is marked with 🇲🇾 tag.
+// ── Educational YouTube videos — verified working fallback list ───────────────
+// Used only when the Supabase educational_videos table is empty.
+// Admin can manage videos via the Admin → Videos tab.
 const VIDEOS = [
-  // ── Malay Language / Malaysia-Specific ──
-  { videoId:'3x1fy6LQNKU', title:'Jangan Jadi Mangsa Scam Telefon - MCMC Malaysia',         channel:'MCMC Malaysia',          tag:'🇲🇾 Malay' },
-  { videoId:'sQMTkJGBGxc', title:'Penipuan Scam Macau - Cara Elak & Lapor',                 channel:'BNM Malaysia',           tag:'🇲🇾 Malay' },
-  { videoId:'9Y3QGJF6tYk', title:'Awas Scam - PDRM Beri Amaran Kepada Rakyat Malaysia',    channel:'PDRM Malaysia',          tag:'🇲🇾 Malay' },
-  { videoId:'R8nHSMnETkA', title:'Skim Cepat Kaya - Kenali & Elakkan Penipuan',             channel:'MyCC Malaysia',          tag:'🇲🇾 Malay' },
-  { videoId:'kIkEMIj1ULc', title:'Lindungi Diri Daripada Penipuan Dalam Talian',             channel:'CyberSecurity Malaysia', tag:'🇲🇾 Malay' },
-  { videoId:'XqS0bBGxMjg', title:'Scam Pelaburan - Bagaimana Ia Berlaku Di Malaysia',       channel:'Astro Awani',            tag:'🇲🇾 Malay' },
-  { videoId:'nWNOFGSMFXM', title:'Waspada Panggilan Scam - Tips Keselamatan Siber',         channel:'RTM Malaysia',           tag:'🇲🇾 Malay' },
-  { videoId:'d2JB4UZKIB0', title:'Penipuan Whatsapp & Telegram - Cara Kesan & Lapor',       channel:'MCMC Malaysia',          tag:'🇲🇾 Malay' },
-  { videoId:'H3aNAfG2TUI', title:'Scam SMS & Panggilan Bank Palsu Di Malaysia',              channel:'BNM Malaysia',           tag:'🇲🇾 Malay' },
-  { videoId:'Yz7pOF4-ybk', title:'Keselamatan Siber Untuk Warga Emas Malaysia',              channel:'CyberSecurity Malaysia', tag:'🇲🇾 Senior' },
-  { videoId:'5DdtKsaMwkY', title:'Bagaimana Penipu Menggunakan AI Klon Suara',               channel:'Astro Awani',            tag:'🇲🇾 AI Scam' },
-  { videoId:'vBkBS7WMDNQ', title:'Laporan Khas: Scam Dalam Talian Di Malaysia 2024',        channel:'TV3 Malaysia',           tag:'🇲🇾 Berita' },
-  { videoId:'yJeH5P9KFmo', title:'Tips Keselamatan Digital - Jangan Kongsi OTP',            channel:'CIMB Malaysia',          tag:'🇲🇾 Banking' },
-  { videoId:'tGLFfMC4lHM', title:'Scam Melalui Panggilan Telefon - Kisah Benar',            channel:'Bernama TV',             tag:'🇲🇾 True Story' },
-  { videoId:'U9PY0tKxDCA', title:'Cara Laporkan Scam Kepada PDRM & MCMC',                   channel:'PDRM Malaysia',          tag:'🇲🇾 Laporan' },
-
-  // ── English — Vishing & Voice Scams ──
-  { videoId:'Y7zNlEMDmI4', title:'Voice Phishing (Vishing) - How It Works',                 channel:'Abnormal Security',      tag:'Vishing' },
-  { videoId:'AuYNXoSfJpg', title:'What is Phishing? How to Protect Yourself',               channel:'Simplilearn',            tag:'Phishing' },
-  { videoId:'GWON1dVdoMg', title:'How to Spot a Scam Call Immediately',                     channel:'Scam Detector',          tag:'Detection' },
-  { videoId:'F7xKKMFRWMs', title:'Robocall Scams and How to Stop Them',                     channel:'Consumer Reports',       tag:'Robocall' },
-  { videoId:'VqA6N0_WVDU', title:'Bank Impersonation Scams - True Stories',                 channel:'Which? Consumer Group',  tag:'Bank Scam' },
-  { videoId:'u9dBGWVwMMA', title:'Grandparent Scam - How It Really Works',                  channel:'AARP Fraud Watch',       tag:'Elder Scam' },
-  { videoId:'1EBfxNEKTyU', title:'Protect Yourself from Phone Scams',                       channel:'AARP',                   tag:'Protection' },
-  { videoId:'opRMrEfAIiI', title:'How Scammers Steal Your Money (Documentary)',             channel:'Fraud Fighter',          tag:'Documentary' },
-  { videoId:'M2KqoWTlBZs', title:'Social Engineering Attacks Explained',                    channel:'Professor Messer',       tag:'Tactics' },
-  { videoId:'sdpxddDzXfE', title:'Top 5 Ways Scammers Steal Your Identity',                 channel:'All Things Secured',     tag:'Identity' },
-
-  // ── English — AI & Deepfake Threats ──
-  { videoId:'aO858HyFbKI', title:'How AI Voice Cloning Is Used in Scams',                   channel:'CNBC',                   tag:'AI Threat' },
-  { videoId:'KpBMJ6KLKHA', title:'Deepfake Voice Scams - What You Must Know',               channel:'CBC News',               tag:'Deepfake' },
-  { videoId:'sRsxFcBCy9E', title:'AI-Generated Scam Calls Are Fooling Everyone',            channel:'NBC News',               tag:'AI Scam' },
-  { videoId:'vGYnLTj02bE', title:'How Criminals Clone Voices Using Free AI Tools',          channel:'Sky News',               tag:'AI Clone' },
-  { videoId:'N1oJ53UQRJM', title:'The Rise of AI Deepfake Fraud - Expert Explains',         channel:'BBC Newsnight',          tag:'AI Fraud' },
-  { videoId:'QR8nSFSf5OA', title:'Real Story: Family Tricked by AI Voice Clone',            channel:'Good Morning America',   tag:'True Story' },
-
-  // ── English — Cyber Security Education ──
-  { videoId:'9tIAFBX5dHs', title:'Cyber Security Full Course for Beginners',                channel:'Simplilearn',            tag:'Education' },
-  { videoId:'inWWhr5tnEA', title:'How to Protect Your Personal Data Online',                channel:'NordVPN',                tag:'Privacy' },
-  { videoId:'Sa2knr2uFEY', title:'What Hackers Do With Stolen Data',                        channel:'Hak5',                   tag:'Hacking' },
-  { videoId:'3Kq1MIfTWCE', title:'Two-Factor Authentication Explained Simply',              channel:'All Things Secured',     tag:'2FA' },
-  { videoId:'eCmKMEuNMjU', title:'How to Create Strong Passwords - Beginner Guide',         channel:'Safety Detectives',      tag:'Passwords' },
-  { videoId:'wTgt3QB93gs', title:'Recognising Fake Websites & Phishing Links',              channel:'Cybrary',                tag:'Phishing' },
-  { videoId:'XBkzBrXlle0', title:'Top 10 Cybersecurity Tips for Seniors',                   channel:'AARP Technology',        tag:'Senior' },
-  { videoId:'OiOoNgmhRCk', title:'What is Social Engineering? Simple Explanation',          channel:'Simply Explained',       tag:'Education' },
-
-  // ── English — Real Stories & Warnings ──
-  { videoId:'V7_tJdxFjAk', title:'I Got Scammed - Real Victim Story',                       channel:'CNBC Make It',           tag:'True Story' },
-  { videoId:'pySFMLaFnZ0', title:'Inside a Scam Call Centre (Hidden Camera)',               channel:'BBC Panorama',           tag:'Documentary' },
-  { videoId:'lc7scxvKQOo', title:'Warning: IRS & Government Impersonation Calls',           channel:'FTC Consumer Info',      tag:'Gov Scam' },
-  { videoId:'n8mbzU0X2nQ', title:'How Romance Scammers Target Lonely People',               channel:'CBC Marketplace',        tag:'Romance Scam' },
-  { videoId:'YjL5oPFniMs', title:'The $200 Million Deepfake CFO Scam Explained',            channel:'Tech Insider',           tag:'Deepfake' },
-  { videoId:'9q4KcADtWEg', title:'Warning Signs Your Elderly Parent Is Being Scammed',      channel:'Consumer Reports',       tag:'Elder Scam' },
-  { videoId:'OB76rKhCVf4', title:'How to Talk to Elderly Parents About Scams',              channel:'AARP',                   tag:'Senior' },
-  { videoId:'wSxQP-UYzpA', title:'Scam Awareness Week - Protect Your Family',              channel:'Australian ACCC',        tag:'Awareness' },
-
-  // ── English — Action & Reporting ──
-  { videoId:'WQe7RHBhP6o', title:'What To Do Immediately If You Got Scammed',               channel:'All Things Secured',     tag:'Action' },
-  { videoId:'tGSuRXLOFi0', title:'How to Report a Scam - Step by Step Guide',              channel:'FTC Consumer Info',      tag:'Reporting' },
-  { videoId:'lNeG-BuFOHk', title:'Freezing Your Bank Account After a Scam',                channel:'Clark Howard',           tag:'Banking' },
-  { videoId:'YqRNALQCBJs', title:'Recovering from Identity Theft - Full Guide',             channel:'Identity Theft Resource',tag:'Recovery' },
+  { videoId:'4HmBZF_09V4', title:'Cyber Security Awareness',                                channel:'Education',              tag:'🇲🇾 Awareness' },
+  { videoId:'lonTsrGAN9E', title:'Scam Awareness Video',                                    channel:'Education',              tag:'🇲🇾 Scam' },
+  { videoId:'0j7nq0Rb_Ck', title:'Protecting Yourself from Voice Scams',                    channel:'Education',              tag:'Protection' },
+  { videoId:'TvrFpAFitQ0', title:'Understanding AI Voice Cloning Threats',                   channel:'Education',              tag:'AI Scam' },
+  { videoId:'GW_DLLjvrsc', title:'Deepfake & Vishing Awareness',                            channel:'Education',              tag:'Deepfake' },
+  { videoId:'h65XHWhgwRk', title:'How to Report a Scam',                                    channel:'Education',              tag:'Action' },
 ]
 
 // getGreeting moved inside component
