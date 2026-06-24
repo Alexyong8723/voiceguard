@@ -25,7 +25,7 @@ export default async function DashboardPage() {
 
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
     if (aal?.nextLevel === 'aal2' && aal.currentLevel === 'aal1') {
-      redirect('/login')
+      redirect('/mfa-setup?mandatory=true')
     }
   }
 
