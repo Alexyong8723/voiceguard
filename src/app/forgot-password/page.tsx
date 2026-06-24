@@ -108,7 +108,7 @@ export default function ForgotPasswordPage() {
             )}
 
             <form onSubmit={handleVerify} className="auth-form" style={{ marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', marginBottom: '1.5rem' }}>
+              <div className="otp-boxes">
                 {otp.map((digit, i) => (
                   <input
                     key={i}
@@ -119,12 +119,8 @@ export default function ForgotPasswordPage() {
                     value={digit}
                     onChange={e => handleOtpChange(i, e.target.value)}
                     onKeyDown={e => handleOtpKeyDown(i, e)}
-                    disabled={isVerifying}
-                    style={{
-                      width: '45px', height: '56px', fontSize: '1.5rem', textAlign: 'center',
-                      fontWeight: 700, borderRadius: '12px', background: 'rgba(255,255,255,0.03)',
-                      border: '1px solid rgba(255,255,255,0.1)', color: 'var(--text-primary)'
-                    }}
+                    className="otp-box"
+                    aria-label={`OTP digit ${i + 1}`}
                   />
                 ))}
               </div>
@@ -198,6 +194,27 @@ export default function ForgotPasswordPage() {
             </p>
           </>
         )}
+
+        {/* Inline styles for OTP boxes */}
+        <style>{`
+          .otp-boxes {
+            display: flex; gap: 8px; justify-content: center; margin-bottom: 1.5rem;
+          }
+          .otp-box {
+            width: 46px; height: 54px; border-radius: 10px; text-align: center;
+            font-size: 1.4rem; font-weight: 800; color: #0d1a3a;
+            border: 2px solid rgba(0,53,128,.2); background: #f8faff;
+            font-family: 'Inter', sans-serif; outline: none;
+            transition: border-color .2s, box-shadow .2s;
+            caret-color: transparent;
+          }
+          .otp-box:focus {
+            border-color: #003580;
+            box-shadow: 0 0 0 3px rgba(0,53,128,.12);
+            background: #fff;
+          }
+          .otp-box:not(:placeholder-shown) { border-color: rgba(0,53,128,.35); }
+        `}</style>
       </div>
     </main>
   )
