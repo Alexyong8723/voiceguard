@@ -3,7 +3,7 @@
 import { useState, useTransition, Suspense, useRef } from 'react'
 import { useSearchParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { login, sendLoginOtp, verifyLoginOtp, verifyLoginMfa } from '@/app/auth/actions'
+import { login, sendLoginOtp, verifyLoginOtp, verifyLoginMfa, requestMfaReset } from '@/app/auth/actions'
 import { useLang, LanguageSwitcher } from '@/lib/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 
@@ -182,6 +182,7 @@ function LoginForm() {
   const [isPending,     startTransition] = useTransition()
   const [mfaRequired,   setMfaRequired]  = useState(false)
   const [mfaCode,       setMfaCode]      = useState('')
+  const [mfaResetSent,  setMfaResetSent] = useState(false)
 
   // ── Password mode state ───────────────────────────────────────────────────
   const [showPassword,  setShowPassword] = useState(false)
@@ -251,6 +252,15 @@ function LoginForm() {
     startTransition(async () => {
       const result = await verifyLoginMfa(fd)
       if (result?.error) { setError(result.error); setMfaCode(''); return }
+    })
+  }
+
+  async function handleMfaResetRequest() {
+    setError(null)
+    startTransition(async () => {
+      const res = await requestMfaReset()
+      if (res?.error) setError(res.error)
+      else setMfaResetSent(true)
     })
   }
 
@@ -380,23 +390,37 @@ function LoginForm() {
         {mode === 'password' && (
           mfaRequired ? (
             <form id="mfa-form" className="auth-form" onSubmit={handleMfaSubmit}>
-              <div className="otp-info-box" style={{ background:'rgba(0,135,90,.06)', borderColor:'rgba(0,135,90,.2)', color:'#00875a' }}>
-                <ShieldIcon />
-                <span><strong>Authenticator App Required</strong><br />Please enter the 6-digit code from your authenticator app to continue.</span>
-              </div>
-              <div className="form-group" style={{ marginTop: '1.5rem' }}>
-                <label className="form-label" style={{ textAlign:'center', display:'block', marginBottom:'.75rem' }}>
-                  Authenticator Code
-                </label>
-                <OtpInput value={mfaCode} onChange={setMfaCode} />
-              </div>
-              <button id="mfa-verify-btn" type="submit" className="auth-btn" disabled={isPending || mfaCode.length < 6}>
-                {isPending && <span className="auth-btn-spinner" />}
-                {isPending ? 'Verifying…' : 'Verify & Sign In'}
-              </button>
+              {mfaResetSent ? (
+                <div className="otp-info-box" style={{ background:'rgba(0,135,90,.06)', borderColor:'rgba(0,135,90,.2)', color:'#00875a' }}>
+                  <ShieldIcon />
+                  <span><strong>Reset Link Sent!</strong><br />Check your email for instructions to remove your Authenticator App.</span>
+                </div>
+              ) : (
+                <>
+                  <div className="otp-info-box" style={{ background:'rgba(0,135,90,.06)', borderColor:'rgba(0,135,90,.2)', color:'#00875a' }}>
+                    <ShieldIcon />
+                    <span><strong>Authenticator App Required</strong><br />Please enter the 6-digit code from your authenticator app to continue.</span>
+                  </div>
+                  <div className="form-group" style={{ marginTop: '1.5rem' }}>
+                    <label className="form-label" style={{ textAlign:'center', display:'block', marginBottom:'.75rem' }}>
+                      Authenticator Code
+                    </label>
+                    <OtpInput value={mfaCode} onChange={setMfaCode} />
+                  </div>
+                  <button id="mfa-verify-btn" type="submit" className="auth-btn" disabled={isPending || mfaCode.length < 6}>
+                    {isPending && <span className="auth-btn-spinner" />}
+                    {isPending ? 'Verifying…' : 'Verify & Sign In'}
+                  </button>
+                  <div style={{ textAlign: 'center', marginTop: '1rem' }}>
+                    <button type="button" className="otp-resend-btn" onClick={handleMfaResetRequest} disabled={isPending}>
+                      Lost your authenticator?
+                    </button>
+                  </div>
+                </>
+              )}
               <div className="otp-actions" style={{ justifyContent: 'center' }}>
                 <button type="button" className="otp-back-btn"
-                  onClick={() => { setMfaRequired(false); setMfaCode(''); setError(null); }}
+                  onClick={() => { setMfaRequired(false); setMfaCode(''); setError(null); setMfaResetSent(false); }}
                   disabled={isPending}>
                   <ArrowLeftIcon /> Back to Login
                 </button>

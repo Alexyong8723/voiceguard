@@ -206,8 +206,6 @@ export default function DashboardClient({
   const [privAnalytics,    setPrivAnalytics]    = useState(true)
   const [settingsSaved,    setSettingsSaved]    = useState(false)
   const [savingSettings,   setSavingSettings]   = useState(false)
-  const [deleteConfirm,    setDeleteConfirm]    = useState(false)
-  const [deleteTyped,      setDeleteTyped]      = useState('')
   const [settingsPending,  startSettings]       = useTransition()
 
   // Apply display settings to document root
@@ -800,47 +798,7 @@ export default function DashboardClient({
                       : <>💾 Save Settings</>}
                   </button>
 
-                  {/* ── DANGER ZONE ── */}
-                  <p className="panel-section-label" style={{marginTop:'1.75rem',color:'#CC0001'}}>{t('settings_danger')}</p>
 
-                  {!deleteConfirm ? (
-                    <button className="btn-danger" onClick={()=>setDeleteConfirm(true)}>
-                      🗑️ Delete My Account
-                    </button>
-                  ) : (
-                    <div className="delete-confirm-box">
-                      <div style={{fontSize:'.875rem',fontWeight:700,color:'#f87171',marginBottom:6}}>
-                        {t('settings_delete_warn')}
-                      </div>
-                      <div style={{fontSize:'.8rem',color:'var(--text-secondary)',marginBottom:10,lineHeight:1.5}}>
-                        All your data — points, contacts, and quiz history — will be permanently deleted.
-                        Type <strong style={{color:'var(--text-primary)'}}>DELETE</strong> to confirm.
-                      </div>
-                      <input
-                        className="fi"
-                        placeholder='Type DELETE to confirm'
-                        value={deleteTyped}
-                        onChange={e=>setDeleteTyped(e.target.value)}
-                        style={{marginBottom:8}}
-                      />
-                      <div style={{display:'flex',gap:6}}>
-                        <button className="btn-danger"
-                          style={{flex:1,opacity:deleteTyped==='DELETE'?1:0.4,cursor:deleteTyped==='DELETE'?'pointer':'default'}}
-                          disabled={deleteTyped!=='DELETE'}
-                          onClick={async()=>{
-                            if(deleteTyped!=='DELETE') return
-                            // Wire to Supabase: await supabase.auth.admin.deleteUser(user.id)
-                            alert('Account deletion requested. In production this triggers a server action.')
-                          }}>
-                          {t('settings_confirm_delete')}
-                        </button>
-                        <button className="btn-cancel" style={{flex:1}}
-                          onClick={()=>{setDeleteConfirm(false);setDeleteTyped('')}}>
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
 
                 </div>
               )}

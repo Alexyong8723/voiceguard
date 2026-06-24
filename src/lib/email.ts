@@ -69,3 +69,20 @@ export async function sendPasswordResetEmail(email: string, link: string) {
   `
   return sendEmail({ to: email, subject: 'Reset Your VoiceGuard Password', html })
 }
+
+export async function sendMfaResetEmail(email: string, link: string) {
+  const html = `
+    <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+      <h2 style="color: #003580;">VoiceGuard Authenticator Reset</h2>
+      <p>Hello,</p>
+      <p>You requested to remove the Authenticator App from your account.</p>
+      <div style="margin: 30px 0;">
+        <a href="${link}" style="background-color: #CC0001; color: #ffffff; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold; display: inline-block;">Confirm Removing Authenticator App</a>
+      </div>
+      <p>If the button doesn't work, you can copy and paste this link into your browser:</p>
+      <p style="word-break: break-all; color: #555;">${link}</p>
+      <p style="margin-top: 40px; font-size: 0.8em; color: #888;">If you didn't request this, please ignore this email. Your account remains secure.</p>
+    </div>
+  `
+  return sendEmail({ to: email, subject: 'Reset Your VoiceGuard Authenticator App', html })
+}

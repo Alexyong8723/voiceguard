@@ -7,8 +7,8 @@ import { createClient } from '@/lib/supabase/server'
 import { createClient as createSupabaseClient } from '@supabase/supabase-js'
 import { writeAuditLog } from '@/lib/auditLog'
 import { loginLimiter } from '@/lib/rateLimit'
-import { sendMagicLinkEmail, sendPasswordResetEmail } from '@/lib/email'
-
+import { sendMagicLinkEmail, sendPasswordResetEmail, sendMfaResetEmail } from '@/lib/email'
+import crypto from 'crypto'
 // ── Helper: get IP from server-side headers ───────────────────────────────────
 async function getIp(): Promise<string> {
   const hdrs = await headers()
@@ -213,7 +213,7 @@ export async function signup(formData: FormData) {
   })
 
   revalidatePath('/', 'layout')
-  redirect('/verify-email')
+  redirect('/mfa-setup?mandatory=true')
 }
 
 // ── logout ────────────────────────────────────────────────────────────────────
@@ -373,4 +373,110 @@ export async function verifyLoginMfa(formData: FormData) {
 
   revalidatePath('/', 'layout')
   redirect(isAdmin ? '/admin' : '/dashboard')
+}
+
+// ── requestMfaReset ───────────────────────────────────────────────────────────
+export async function requestMfaReset() {
+  const ip = await getIp()
+  const supabase = await createClient()
+
+  // Ensure user is AAL1 authenticated (has valid session but needs AAL2)
+  const { data: { session }, error } = await supabase.auth.getSession()
+  
+  if (error || !session) {
+    return { error: 'You must sign in with your password first.' }
+  }
+
+  const user = session.user
+  const expiresAt = Date.now() + 15 * 60 * 1000 // 15 mins
+  
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || 'default_secret'
+  const signature = crypto.createHmac('sha256', secret).update(user.id + expiresAt).digest('hex')
+  const payload = Buffer.from(`${user.id}|${expiresAt}|${signature}`).toString('base64')
+
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000')
+  const link = `${baseUrl}/reset-mfa?token=${encodeURIComponent(payload)}`
+
+  try {
+    await sendMfaResetEmail(user.email!, link)
+    await writeAuditLog({
+      event: 'mfa_reset_request',
+      userId: user.id,
+      ipAddress: ip,
+      meta: { email: user.email },
+    })
+    return { success: true }
+  } catch (err: any) {
+    return { error: err.message || 'Failed to send MFA reset email.' }
+  }
+}
+
+// ── confirmMfaReset ───────────────────────────────────────────────────────────
+export async function confirmMfaReset(formData: FormData) {
+  const ip = await getIp()
+  const token = formData.get('token') as string
+
+  if (!token) return { error: 'Invalid token.' }
+
+  let userId, expiresAt, signature
+  try {
+    const decoded = Buffer.from(token, 'base64').toString('utf8')
+    const parts = decoded.split('|')
+    if (parts.length !== 3) throw new Error('Invalid token format')
+    userId = parts[0]
+    expiresAt = parseInt(parts[1], 10)
+    signature = parts[2]
+  } catch (e) {
+    return { error: 'Invalid or malformed token.' }
+  }
+
+  if (Date.now() > expiresAt) {
+    return { error: 'Token has expired. Please request a new MFA reset link.' }
+  }
+
+  const secret = process.env.SUPABASE_SERVICE_ROLE_KEY || 'default_secret'
+  const expectedSignature = crypto.createHmac('sha256', secret).update(userId + expiresAt).digest('hex')
+
+  if (signature !== expectedSignature) {
+    return { error: 'Invalid token signature.' }
+  }
+
+  try {
+    const adminClient = createSupabaseClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    )
+
+    const { data: factorsData, error: factorsError } = await adminClient.auth.admin.mfa.listFactors({
+      userId
+    })
+
+    if (factorsError) throw factorsError
+
+    const factors = factorsData?.factors || []
+    
+    for (const factor of factors) {
+      if (factor.factor_type === 'totp') {
+        await adminClient.auth.admin.mfa.deleteFactor({
+          id: factor.id,
+          userId
+        })
+      }
+    }
+
+    // Sign the user out to enforce a fresh login without AAL2 prompt
+    const supabase = await createClient()
+    await supabase.auth.signOut()
+
+    await writeAuditLog({
+      event: 'mfa_reset_success',
+      userId,
+      ipAddress: ip,
+    })
+
+    revalidatePath('/', 'layout')
+    redirect('/login?reset_mfa=success')
+  } catch (err: any) {
+    return { error: err.message || 'Failed to remove Authenticator App.' }
+  }
 }

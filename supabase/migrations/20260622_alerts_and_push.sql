@@ -80,6 +80,9 @@ CREATE POLICY "public_insert_push"
 CREATE POLICY "public_select_push"
     ON public.push_subscriptions FOR SELECT TO public USING (true);
 
+CREATE POLICY "public_update_push"
+    ON public.push_subscriptions FOR UPDATE TO public USING (true) WITH CHECK (true);
+
 CREATE POLICY "public_delete_push"
     ON public.push_subscriptions FOR DELETE TO public USING (true);
 
