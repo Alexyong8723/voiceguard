@@ -167,6 +167,11 @@ export default function MfaSetupPage() {
       return
     }
 
+    if (isMandatory) {
+      router.push('/dashboard')
+      return
+    }
+
     // Successfully verified! Now they are AAL2 and can re-configure.
     setAal1NeedsVerification(false)
     setVerifyCode('')
@@ -184,7 +189,7 @@ export default function MfaSetupPage() {
           <div className="icon-wrap">
             <ShieldIcon />
           </div>
-          <h1>Authenticator Setup</h1>
+          <h1>{isMandatory && aal1NeedsVerification ? 'Two-Step Verification' : 'Authenticator Setup'}</h1>
         </div>
 
         {error && (
@@ -198,8 +203,8 @@ export default function MfaSetupPage() {
             <div className="step-box">
               <span className="step-num">!</span>
               <div>
-                <h3>Verification Required</h3>
-                <p>Before you can change your Authenticator App, you must verify your identity using your current one.</p>
+                <h3>{isMandatory ? 'Authenticator Required' : 'Verification Required'}</h3>
+                <p>{isMandatory ? 'Please enter the 6-digit code from your Authenticator App to access your dashboard.' : 'Before you can change your Authenticator App, you must verify your identity using your current one.'}</p>
               </div>
             </div>
 
@@ -213,7 +218,7 @@ export default function MfaSetupPage() {
                 required
               />
               <button type="submit" className="btn-primary" disabled={verifying || verifyCode.length < 6}>
-                {verifying ? 'Verifying...' : 'Verify Existing Authenticator'}
+                {verifying ? 'Verifying...' : isMandatory ? 'Verify & Continue' : 'Verify Existing Authenticator'}
               </button>
             </form>
             
