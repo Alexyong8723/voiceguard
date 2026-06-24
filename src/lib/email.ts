@@ -106,19 +106,21 @@ export async function sendPasswordResetEmail(email: string, linkOrCode: string) 
         </td></tr>
         <tr><td style="padding:36px 40px 28px;">
           <p style="margin:0 0 18px;font-size:16px;color:#374151;line-height:1.6;">Hello,</p>
-          <p style="margin:0 0 28px;font-size:16px;color:#374151;line-height:1.6;">We received a request to reset your VoiceGuard password. ${otp ? 'Enter the code below or click the button to set a new password.' : 'Click the button below to choose a new password.'}</p>
+          <p style="margin:0 0 28px;font-size:16px;color:#374151;line-height:1.6;">We received a request to reset your VoiceGuard password. ${otp ? 'Enter the code below to set a new password.' : 'Click the button below to choose a new password.'}</p>
           ${otp ? `
           <div style="text-align:center;margin-bottom:28px;">
             <div style="display:inline-block;background:#f8faff;border:2px dashed #c7d2fe;border-radius:14px;padding:20px 32px;">
               <p style="margin:0 0 6px;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;color:#6366f1;">Reset Code</p>
               <span style="font-family:'Courier New',monospace;font-size:36px;font-weight:800;color:#312e81;letter-spacing:10px;">${otp}</span>
             </div>
-          </div>` : ''}
+          </div>
+          ` : `
           <div style="text-align:center;margin-bottom:28px;">
             <a href="${link}" style="display:inline-block;background:linear-gradient(135deg,#4f46e5,#7c3aed);color:#fff;text-decoration:none;padding:16px 36px;border-radius:12px;font-size:16px;font-weight:700;box-shadow:0 4px 14px rgba(79,70,229,0.3);">Reset My Password →</a>
           </div>
           <p style="margin:0 0 8px;font-size:13px;color:#94a3b8;line-height:1.5;">If the button doesn't work, copy and paste this link into your browser:</p>
           <p style="margin:0;font-size:12px;color:#6366f1;word-break:break-all;">${link}</p>
+          `}
         </td></tr>
         <tr><td style="background:#f8fafc;border-top:1px solid #e2e8f0;padding:22px 40px;text-align:center;">
           <p style="margin:0 0 6px;font-size:13px;color:#64748b;">If you didn't request a password reset, you can safely ignore this email. Your password will not be changed.</p>
