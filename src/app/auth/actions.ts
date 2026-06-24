@@ -475,8 +475,9 @@ export async function confirmMfaReset(formData: FormData) {
     })
 
     revalidatePath('/', 'layout')
-    redirect('/login?reset_mfa=success')
   } catch (err: any) {
     return { error: err.message || 'Failed to remove Authenticator App.' }
   }
+
+  redirect('/login?reset_mfa=success')
 }
