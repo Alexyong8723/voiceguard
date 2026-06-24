@@ -44,6 +44,8 @@ export type AuditEvent =
   | 'login_mfa_setup_required'
   | 'api_unauthorized'
   | 'scheduled_report_sent'
+  | 'mfa_reset_request'
+  | 'mfa_reset_success'
 
 export interface AuditLogParams {
   event: AuditEvent
