@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { detectLimiter, getClientIp } from '@/lib/rateLimit'
 import { writeAuditLog } from '@/lib/auditLog'
 
@@ -148,6 +149,32 @@ export async function POST(req: NextRequest) {
 
   // ── ⑤ Parse response ─────────────────────────────────────────────────────────
   const body = await pyRes.json().catch(() => ({ error: 'Invalid JSON from Python API' }))
+
+  // ── Insert into database tables ───────────────────────────────────────────────
+  const admin = await createAdminClient()
+  
+  // Insert into audio_files
+  const { data: audioData, error: audioError } = await admin.from('audio_files').insert({
+    user_id: user.id,
+    filename: filename,
+    file_path: null, // file saved temporarily in memory, not storage
+    format: ext.replace('.', '') || 'unknown',
+    file_size_bytes: audioFile.size,
+    status: pyRes.status === 200 ? 'completed' : 'failed',
+  }).select('id').single()
+
+  if (!audioError && audioData) {
+    // Insert into detection_results
+    await admin.from('detection_results').insert({
+      audio_file_id: audioData.id,
+      user_id: user.id,
+      classification: body?.label ?? null,
+      confidence_score: body?.confidence ?? null,
+      detected_anomalies: {},
+      explanation: null,
+      model_used: 'VoiceGuard API',
+    })
+  }
 
   // ── ⑤ Audit log — record every scan result ──────────────────────────────────
   await writeAuditLog({

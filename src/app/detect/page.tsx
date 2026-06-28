@@ -548,17 +548,15 @@ export default function DetectPage() {
         </div>
 
         {/* Backend status */}
-        <div className={`backend-bar ${backendOk === null ? 'checking' : backendOk ? 'ok' : 'err'}`}>
-          <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', flexShrink: 0, opacity: backendOk === null ? 0.5 : 1 }} />
-          {backendOk === null && <span>{t('detect_engine_checking')}</span>}
-          {backendOk === true && <span><strong>{t('detect_engine_online')}</strong> — {t('detect_engine_online_sub')}</span>}
-          {backendOk === false && (
+        {backendOk === false && (
+          <div className="backend-bar err">
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
             <span>
               <strong>{t('detect_engine_offline')}</strong>{' '}
               {t('detect_engine_offline_sub')}
             </span>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* ── IDLE / RESULT: upload zone + mic controls ─────────────────────── */}
         {(state === 'idle' || state === 'result' || state === 'error') && (

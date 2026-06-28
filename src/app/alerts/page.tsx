@@ -453,9 +453,7 @@ export default function AlertsPage() {
         {/* Page header */}
         <div className="page-head">
           <div>
-            <div className="ai-badge">
-              <CheckCircle s={11}/> Curated Alerts — Updated Daily
-            </div>
+
             <div className="page-title">
               <BellIcon s={24}/>
               {t('alerts_title')}
@@ -476,16 +474,7 @@ export default function AlertsPage() {
           </div>
         </div>
 
-        {/* ── Live urgency ticker ── */}
-        {!loading && urgentAlerts.length > 0 && currentTicker && (
-          <div className="ticker-bar">
-            <span className="ticker-live-dot"/>
-            <span className="ticker-label">⚡ Live</span>
-            <span className="ticker-sep">·</span>
-            <span className="ticker-text">{currentTicker.title}</span>
-            <span className="ticker-count">{urgentAlerts.length} urgent</span>
-          </div>
-        )}
+
 
         {/* ── Push Notification Banner ── */}
         {pushState === 'unsupported' && (
@@ -539,13 +528,7 @@ export default function AlertsPage() {
           </div>
         )}
 
-        {/* Status bar */}
-        {!loading && loadedAt && (
-          <div className="status-bar live">
-            <span style={{width:7,height:7,borderRadius:'50%',background:'#34d399',display:'inline-block',animation:'live-pulse 2s ease-in-out infinite'}}/>
-            <span>✅ Curated threat intelligence — {alerts.length} alerts · Refreshes daily</span>
-          </div>
-        )}
+
 
         {/* Filter tabs */}
         <div className="filter-row">

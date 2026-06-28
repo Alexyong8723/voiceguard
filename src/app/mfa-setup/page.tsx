@@ -32,6 +32,9 @@ export default function MfaSetupPage() {
   const [aal1NeedsVerification, setAal1NeedsVerification] = useState(false)
   const [existingFactorId, setExistingFactorId] = useState<string | null>(null)
   
+  const [resetRequested, setResetRequested] = useState(false)
+  const [resetting, setResetting] = useState(false)
+  
   const isMandatory = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('mandatory') === 'true' : false
 
   useEffect(() => {
@@ -141,6 +144,25 @@ export default function MfaSetupPage() {
     router.push('/dashboard')
   }
 
+  async function handleRequestReset() {
+    setResetting(true)
+    setError(null)
+    try {
+      const res = await fetch('/api/mfa/request-reset', { method: 'POST' })
+      const data = await res.json()
+      if (data.error) throw new Error(data.error)
+      setResetRequested(true)
+    } catch (err: any) {
+      setError(err.message || 'Failed to send reset email')
+    }
+    setResetting(false)
+  }
+
+  async function handleReturnBack() {
+    await supabase.auth.signOut()
+    router.push('/login')
+  }
+
   async function handleVerifyExisting(e: React.FormEvent) {
     e.preventDefault()
     if (!existingFactorId || verifyCode.length < 6) return
@@ -222,7 +244,24 @@ export default function MfaSetupPage() {
               </button>
             </form>
             
-            {!isMandatory && <Link href="/dashboard" className="cancel-link">Cancel</Link>}
+            {!isMandatory ? (
+              <Link href="/dashboard" className="cancel-link">Cancel</Link>
+            ) : (
+              <div style={{ marginTop: '1.5rem' }}>
+                <button type="button" onClick={handleReturnBack} className="btn-secondary" style={{ width: '100%', marginBottom: '10px' }}>
+                  Return Back
+                </button>
+                {resetRequested ? (
+                  <p className="warning-text" style={{ textAlign: 'center', marginTop: '10px', color: '#00875a' }}>
+                    A reset link has been sent to your email.
+                  </p>
+                ) : (
+                  <button type="button" onClick={handleRequestReset} disabled={resetting} className="cancel-link" style={{ width: '100%', border: 'none', background: 'none', cursor: 'pointer' }}>
+                    {resetting ? 'Requesting...' : 'Forgot Authenticator?'}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
         ) : existingFactors.length > 0 ? (
           <div className="existing-state">
