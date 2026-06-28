@@ -642,9 +642,9 @@ function LoginForm() {
 
           /* ── Google Button & Divider ── */
           .google-btn {
-            background-color: #ffffff;
-            color: #3d5080;
-            border: 1px solid rgba(0,53,128,.15);
+            background-color: #4285F4;
+            color: #ffffff;
+            border: none;
             font-weight: 600;
             display: flex;
             align-items: center;
@@ -652,8 +652,8 @@ function LoginForm() {
             gap: 10px;
           }
           .google-btn:hover:not(:disabled) {
-            background-color: #f8faff;
-            box-shadow: 0 2px 8px rgba(0,53,128,.08);
+            background-color: #357ae8;
+            box-shadow: 0 2px 8px rgba(66,133,244,.3);
           }
           .auth-divider {
             display: flex;
