@@ -136,7 +136,7 @@ export async function fetchAdminStats(): Promise<AdminStats> {
     .from('audit_logs')
     .select('*', { count: 'exact', head: true })
     .eq('event', 'detect_scan')
-    .contains('meta', { label: 'spoof' })
+    .contains('meta', { label: 'FAKE' })
 
   const { data: pointsData } = await admin.from('user_points').select('total_points')
   const avgPoints = pointsData && pointsData.length > 0
@@ -150,8 +150,8 @@ export async function fetchAdminStats(): Promise<AdminStats> {
     if (typeof s.meta === 'object' && s.meta !== null) {
       const conf = (s.meta as any).confidence ?? 0
       totalConf += conf
-      if ((s.meta as any).label === 'bona-fide') realCount++
-      if ((s.meta as any).label === 'spoof') fakeCount++
+      if ((s.meta as any).label === 'REAL') realCount++
+      if ((s.meta as any).label === 'FAKE') fakeCount++
     }
   }
   const avgConfidence = scans.length > 0 ? Math.round(totalConf / scans.length) : 0
@@ -246,7 +246,7 @@ export async function buildWeeklyAnalytics() {
 
   // Spoof detections this week
   const spoofLogsWeek = (weekLogs ?? []).filter(
-    l => l.event === 'detect_scan' && (l.meta as any)?.label === 'spoof'
+    l => l.event === 'detect_scan' && (l.meta as any)?.label === 'FAKE'
   )
 
   // Peak hour analysis from this week's logins
@@ -714,8 +714,8 @@ export async function sendCustomReport(
   const loginSuccess    = logs.filter(l => l.event === 'login_success').length
   const loginFailure    = logs.filter(l => l.event === 'login_failure').length
   const detectScans     = logs.filter(l => l.event === 'detect_scan')
-  const spoofs          = detectScans.filter(l => (l.meta as any)?.label === 'spoof').length
-  const bonaFide        = detectScans.filter(l => (l.meta as any)?.label === 'bona-fide').length
+  const spoofs          = detectScans.filter(l => (l.meta as any)?.label === 'FAKE').length
+  const bonaFide        = detectScans.filter(l => (l.meta as any)?.label === 'REAL').length
   const avgConf         = detectScans.length > 0
     ? Math.round(detectScans.reduce((s, l) => s + ((l.meta as any)?.confidence ?? 0), 0) / detectScans.length)
     : 0
@@ -735,7 +735,7 @@ export async function sendCustomReport(
     if (log.event === 'login_success')  dayMap[day].logins++
     if (log.event === 'signup_success') dayMap[day].signups++
     if (log.event === 'detect_scan')    dayMap[day].scans++
-    if (log.event === 'detect_scan' && (log.meta as any)?.label === 'spoof') dayMap[day].spoofs++
+    if (log.event === 'detect_scan' && (log.meta as any)?.label === 'FAKE') dayMap[day].spoofs++
   }
   const dailyRows = Object.entries(dayMap).sort(([a], [b]) => a.localeCompare(b))
 
