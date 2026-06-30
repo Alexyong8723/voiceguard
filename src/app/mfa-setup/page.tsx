@@ -102,7 +102,8 @@ export default function MfaSetupPage() {
     }
 
     const { data, error } = await supabase.auth.mfa.enroll({
-      factorType: 'totp'
+      factorType: 'totp',
+      friendlyName: `VoiceGuard Auth - ${new Date().getTime()}`
     })
     
     if (error) {
