@@ -59,8 +59,7 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
   const [dispSimplified,    setDispSimplified]    = useState(false)
   const [privAnonymised,    setPrivAnonymised]    = useState(true)
   const [privAnalytics,     setPrivAnalytics]     = useState(true)
-  const [settingsSaved,     setSettingsSaved]     = useState(false)
-  const [savingSettings,    setSavingSettings]    = useState(false)
+  const [settingsLoaded,    setSettingsLoaded]    = useState(false)
   const [deleteConfirm,     setDeleteConfirm]     = useState(false)
   const [deleteTyped,       setDeleteTyped]       = useState('')
 
@@ -95,33 +94,34 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
   useEffect(() => {
     try {
       const raw = localStorage.getItem('vg_settings')
-      if (!raw) return
-      const s = JSON.parse(raw)
-      if (s.notifScamAlert    !== undefined) setNotifScamAlert(s.notifScamAlert)
-      if (s.notifQuizRemind   !== undefined) setNotifQuizRemind(s.notifQuizRemind)
-      if (s.notifWeeklyDigest !== undefined) setNotifWeeklyDigest(s.notifWeeklyDigest)
-      if (s.notifNewArticles  !== undefined) setNotifNewArticles(s.notifNewArticles)
-      if (s.dispLargeText     !== undefined) setDispLargeText(s.dispLargeText)
-      if (s.dispHighContrast  !== undefined) setDispHighContrast(s.dispHighContrast)
-      if (s.dispSimplified    !== undefined) setDispSimplified(s.dispSimplified)
-      if (s.privAnonymised    !== undefined) setPrivAnonymised(s.privAnonymised)
-      if (s.privAnalytics     !== undefined) setPrivAnalytics(s.privAnalytics)
-      applyDisplay(s.dispLargeText ?? false, s.dispHighContrast ?? false, s.dispSimplified ?? false)
-    } catch { /* ignore */ }
+      if (raw) {
+        const s = JSON.parse(raw)
+        if (s.notifScamAlert    !== undefined) setNotifScamAlert(s.notifScamAlert)
+        if (s.notifQuizRemind   !== undefined) setNotifQuizRemind(s.notifQuizRemind)
+        if (s.notifWeeklyDigest !== undefined) setNotifWeeklyDigest(s.notifWeeklyDigest)
+        if (s.notifNewArticles  !== undefined) setNotifNewArticles(s.notifNewArticles)
+        if (s.dispLargeText     !== undefined) setDispLargeText(s.dispLargeText)
+        if (s.dispHighContrast  !== undefined) setDispHighContrast(s.dispHighContrast)
+        if (s.dispSimplified    !== undefined) setDispSimplified(s.dispSimplified)
+        if (s.privAnonymised    !== undefined) setPrivAnonymised(s.privAnonymised)
+        if (s.privAnalytics     !== undefined) setPrivAnalytics(s.privAnalytics)
+      }
+    } catch {}
+    setSettingsLoaded(true)
   }, [])
 
-  const handleSaveSettings = async () => {
-    setSavingSettings(true)
-    applyDisplay(dispLargeText, dispHighContrast, dispSimplified)
+  useEffect(() => {
+    if (!settingsLoaded) return
     localStorage.setItem('vg_settings', JSON.stringify({
       notifScamAlert, notifQuizRemind, notifWeeklyDigest, notifNewArticles,
       dispLargeText, dispHighContrast, dispSimplified, privAnonymised, privAnalytics,
     }))
-    await new Promise(r => setTimeout(r, 600))
-    setSavingSettings(false)
-    setSettingsSaved(true)
-    setTimeout(() => setSettingsSaved(false), 2500)
-  }
+    applyDisplay(dispLargeText, dispHighContrast, dispSimplified)
+  }, [
+    notifScamAlert, notifQuizRemind, notifWeeklyDigest, notifNewArticles,
+    dispLargeText, dispHighContrast, dispSimplified,
+    privAnonymised, privAnalytics, settingsLoaded
+  ])
 
   const Toggle = ({ on, toggle }: { on: boolean; toggle: () => void }) => (
     <div
@@ -305,25 +305,7 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
                   <Row label="Share anonymised quiz data" desc="Helps improve question quality — no personal data is shared" on={privAnonymised} toggle={() => setPrivAnonymised(v => !v)} />
                   <Row label="Usage analytics"            desc="Helps us understand how features are used to improve VoiceGuard" on={privAnalytics} toggle={() => setPrivAnalytics(v => !v)} />
 
-                  {/* Save button */}
-                  <button
-                    onClick={handleSaveSettings}
-                    disabled={savingSettings}
-                    style={{
-                      marginTop: '1.5rem', width: '100%', padding: 10, borderRadius: 10,
-                      border: 'none', background: 'linear-gradient(135deg,#003580,#1a4fa0)',
-                      color: 'white', fontSize: '.875rem', fontWeight: 700, cursor: 'pointer',
-                      fontFamily: "'Inter',sans-serif", transition: 'opacity .2s',
-                      opacity: savingSettings ? 0.6 : 1, display: 'flex', alignItems: 'center',
-                      justifyContent: 'center', gap: 8,
-                    }}
-                  >
-                    {savingSettings
-                      ? <><span className="sup-spinner"/>&nbsp;{t('settings_saving')}</>
-                      : settingsSaved
-                      ? <>✅ Settings saved!</>
-                      : <>💾 Save Settings</>}
-                  </button>
+                  {/* Settings auto-save silently */}
 
                   {/* Danger zone */}
                   <p className="sup-section-label" style={{ marginTop: '1.75rem', color: '#f87171' }}>{t('settings_danger')}</p>

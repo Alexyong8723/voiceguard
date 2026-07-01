@@ -204,9 +204,7 @@ export default function DashboardClient({
   const [dispSimplified,   setDispSimplified]   = useState(false)
   const [privAnonymised,   setPrivAnonymised]   = useState(true)
   const [privAnalytics,    setPrivAnalytics]    = useState(true)
-  const [settingsSaved,    setSettingsSaved]    = useState(false)
-  const [savingSettings,   setSavingSettings]   = useState(false)
-  const [settingsPending,  startSettings]       = useTransition()
+  const [settingsLoaded,   setSettingsLoaded]   = useState(false)
 
   // Apply display settings to document root
   const applyDisplaySettings = (large: boolean, contrast: boolean, simplified: boolean) => {
@@ -216,43 +214,40 @@ export default function DashboardClient({
     root.dataset.simplified   = simplified ? 'true'   : 'false'
   }
 
-  const handleSaveSettings = async () => {
-    setSavingSettings(true)
-    applyDisplaySettings(dispLargeText, dispHighContrast, dispSimplified)
+  // Load persisted settings on mount
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem('vg_settings')
+      if (raw) {
+        const s = JSON.parse(raw)
+        if (s.notifScamAlert    !== undefined) setNotifScamAlert(s.notifScamAlert)
+        if (s.notifQuizRemind   !== undefined) setNotifQuizRemind(s.notifQuizRemind)
+        if (s.notifWeeklyDigest !== undefined) setNotifWeeklyDigest(s.notifWeeklyDigest)
+        if (s.notifNewArticles  !== undefined) setNotifNewArticles(s.notifNewArticles)
+        if (s.dispLargeText     !== undefined) setDispLargeText(s.dispLargeText)
+        if (s.dispHighContrast  !== undefined) setDispHighContrast(s.dispHighContrast)
+        if (s.dispSimplified    !== undefined) setDispSimplified(s.dispSimplified)
+        if (s.privAnonymised    !== undefined) setPrivAnonymised(s.privAnonymised)
+        if (s.privAnalytics     !== undefined) setPrivAnalytics(s.privAnalytics)
+      }
+    } catch {}
+    setSettingsLoaded(true)
+  }, [])
+
+  // Auto-save and apply settings whenever they change
+  useEffect(() => {
+    if (!settingsLoaded) return
     localStorage.setItem('vg_settings', JSON.stringify({
       notifScamAlert, notifQuizRemind, notifWeeklyDigest, notifNewArticles,
       dispLargeText, dispHighContrast, dispSimplified,
       privAnonymised, privAnalytics,
     }))
-    await new Promise(r => setTimeout(r, 600))
-    setSavingSettings(false)
-    setSettingsSaved(true)
-    setTimeout(() => setSettingsSaved(false), 2500)
-  }
-
-  // Load persisted settings on mount and re-apply display settings
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem('vg_settings')
-      if (!raw) return
-      const s = JSON.parse(raw)
-      if (s.notifScamAlert    !== undefined) setNotifScamAlert(s.notifScamAlert)
-      if (s.notifQuizRemind   !== undefined) setNotifQuizRemind(s.notifQuizRemind)
-      if (s.notifWeeklyDigest !== undefined) setNotifWeeklyDigest(s.notifWeeklyDigest)
-      if (s.notifNewArticles  !== undefined) setNotifNewArticles(s.notifNewArticles)
-      if (s.dispLargeText     !== undefined) setDispLargeText(s.dispLargeText)
-      if (s.dispHighContrast  !== undefined) setDispHighContrast(s.dispHighContrast)
-      if (s.dispSimplified    !== undefined) setDispSimplified(s.dispSimplified)
-      if (s.privAnonymised    !== undefined) setPrivAnonymised(s.privAnonymised)
-      if (s.privAnalytics     !== undefined) setPrivAnalytics(s.privAnalytics)
-      // Re-apply display settings immediately on load
-      applyDisplaySettings(
-        s.dispLargeText    ?? false,
-        s.dispHighContrast ?? false,
-        s.dispSimplified   ?? false,
-      )
-    } catch {}
-  }, [])
+    applyDisplaySettings(dispLargeText, dispHighContrast, dispSimplified)
+  }, [
+    notifScamAlert, notifQuizRemind, notifWeeklyDigest, notifNewArticles,
+    dispLargeText, dispHighContrast, dispSimplified,
+    privAnonymised, privAnalytics, settingsLoaded
+  ])
 
   const handleAdd = () => {
     if (!cName.trim() || !cNumber.trim()) { setCErr('Name and number are required.'); return }
@@ -751,16 +746,6 @@ export default function DashboardClient({
                     </div>
                   </div>
 
-                  {/* preview chips for display settings */}
-                  {(dispLargeText||dispHighContrast||dispSimplified)&&(
-                    <div style={{display:'flex',gap:6,flexWrap:'wrap',margin:'.5rem 0 .25rem'}}>
-                      {dispLargeText   &&<span className="preview-chip">Aa Large Text</span>}
-                      {dispHighContrast&&<span className="preview-chip">☀️ High Contrast</span>}
-                      {dispSimplified  &&<span className="preview-chip">✦ Simplified</span>}
-                      <span style={{fontSize:'.7rem',color:'var(--text-muted)',alignSelf:'center'}}>— preview on save</span>
-                    </div>
-                  )}
-
                   {/* ── PRIVACY ── */}
                   <p className="panel-section-label" style={{marginTop:'1.5rem'}}>{t('settings_privacy')}</p>
                   <div className="setting-row">
@@ -782,23 +767,7 @@ export default function DashboardClient({
                     </div>
                   </div>
 
-                  {/* ── SAVE BUTTON ── */}
-                  <button className="btn-save-settings" onClick={handleSaveSettings}
-                    disabled={savingSettings}
-                    style={{marginTop:'1.5rem',width:'100%',padding:'13px',borderRadius:11,
-                      border:'none',background:'linear-gradient(135deg,#003580,#1a4fa0)',
-                      color:'white',fontSize:'1rem',fontWeight:700,cursor:'pointer',
-                      fontFamily:"'Inter',sans-serif",transition:'opacity .2s',
-                      opacity:savingSettings?0.6:1,display:'flex',alignItems:'center',
-                      justifyContent:'center',gap:8,minHeight:'50px'}}>
-                    {savingSettings
-                      ? <><span className="save-spinner"/>&nbsp;{t('settings_saving')}</>
-                      : settingsSaved
-                      ? <>✅ Settings Saved!</>
-                      : <>💾 Save Settings</>}
-                  </button>
-
-
+                  {/* Settings auto-save silently */}
 
                 </div>
               )}
