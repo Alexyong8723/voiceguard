@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { useLang, LanguageSwitcher } from '@/lib/LanguageContext'
 import { SidebarUserPanel } from '@/lib/SidebarUserPanel'
+import { createClient } from '@/lib/supabase/client'
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const ShieldIcon = ({ s = 20 }: { s?: number }) => <svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" /></svg>
@@ -200,6 +201,8 @@ export default function DetectPage() {
   const [recSeconds, setRecSeconds] = useState(0)
   const [backendOk, setBackendOk] = useState<boolean | null>(null)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  // sessionReady: null = checking, true = confirmed, false = no session
+  const [sessionReady, setSessionReady] = useState<boolean | null>(null)
 
   // Recording refs
   const analyserRef = useRef<AnalyserNode | null>(null)
@@ -240,11 +243,28 @@ export default function DetectPage() {
     setProgPct(success ? 100 : 0)
   }, [])
 
-  // ── Health probe ────────────────────────────────────────────────────────
+  // ── Session guard + health probe ────────────────────────────────────────
+  // Confirm the Supabase session exists client-side BEFORE sending any request
+  // to /api/detect. This prevents the JSON-parse crash that happens when
+  // a new user's auth cookie hasn't been picked up by the server yet.
   useEffect(() => {
-    fetch('/api/detect')
-      .then(r => setBackendOk(r.ok))
-      .catch(() => setBackendOk(false))
+    const supabase = createClient()
+    supabase.auth.getSession().then(async ({ data: { session } }) => {
+      if (!session) {
+        // No session found client-side — refresh once (handles cookie race)
+        const { data: refreshed } = await supabase.auth.refreshSession()
+        if (!refreshed.session) {
+          setSessionReady(false)
+          setBackendOk(false)
+          return
+        }
+      }
+      setSessionReady(true)
+      // Now safe to probe the backend
+      fetch('/api/detect')
+        .then(r => setBackendOk(r.ok))
+        .catch(() => setBackendOk(false))
+    })
   }, [])
 
   // ── Audio upload & analyse ───────────────────────────────────────────────
@@ -260,10 +280,26 @@ export default function DetectPage() {
 
     try {
       const res = await fetch('/api/detect', { method: 'POST', body: form })
-      const data = await res.json()
+
+      // Safely parse JSON — proxies/platforms can return plain-text errors
+      // (e.g. "Request Entity Too Large") that would crash res.json()
+      const data = await res.json().catch(async () => {
+        const text = await res.text().catch(() => '')
+        return { error: text || `Server error ${res.status}` }
+      })
 
       if (!res.ok) {
-        throw new Error(data.error || `Server error ${res.status}`)
+        // Map common HTTP errors to friendly messages
+        if (res.status === 401) {
+          throw new Error('You must be signed in to use the detection service. Please log in and try again.')
+        }
+        if (res.status === 429) {
+          throw new Error('Too many requests. Please wait a moment before trying again.')
+        }
+        if (res.status === 503) {
+          throw new Error('The detection service is temporarily unavailable. Please try again later.')
+        }
+        throw new Error(data?.error || `Server error ${res.status}`)
       }
 
       const pred = data as PredictResult
@@ -547,8 +583,17 @@ export default function DetectPage() {
           </div>
         </div>
 
-        {/* Backend status */}
-        {backendOk === false && (
+        {/* Session / Backend status banners */}
+        {sessionReady === false && (
+          <div className="backend-bar err">
+            <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
+            <span>
+              <strong>Session expired.</strong>{' '}
+              <a href="/login" style={{ color: 'inherit', textDecoration: 'underline' }}>Please sign in again</a> to use the detection service.
+            </span>
+          </div>
+        )}
+        {sessionReady === true && backendOk === false && (
           <div className="backend-bar err">
             <div style={{ width: 8, height: 8, borderRadius: '50%', background: 'currentColor', flexShrink: 0 }} />
             <span>
@@ -565,17 +610,19 @@ export default function DetectPage() {
             {/* Drop zone */}
             <div
               id="drop-zone"
-              className={`drop-zone${dragOver ? ' drag-over' : ''}`}
-              onDrop={onDrop}
-              onDragOver={e => { e.preventDefault(); setDragOver(true) }}
+              className={`drop-zone${dragOver ? ' drag-over' : ''}${sessionReady !== true ? ' disabled' : ''}`}
+              onDrop={sessionReady === true ? onDrop : e => e.preventDefault()}
+              onDragOver={e => { e.preventDefault(); if (sessionReady === true) setDragOver(true) }}
               onDragLeave={() => setDragOver(false)}
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => { if (sessionReady === true) fileInputRef.current?.click() }}
+              style={sessionReady !== true ? { opacity: 0.45, cursor: 'not-allowed', pointerEvents: 'none' } : {}}
             >
               <input
                 ref={fileInputRef}
                 type="file"
                 accept=".wav,.flac,.mp3,.m4a,.ogg,audio/*"
                 style={{ display: 'none' }}
+                disabled={sessionReady !== true}
                 onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); e.target.value = '' }}
               />
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12, position: 'relative', zIndex: 1 }}>
@@ -584,10 +631,11 @@ export default function DetectPage() {
                 </div>
                 <div>
                   <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: 4 }}>
-                    {t('detect_drop_title')}
+                    {sessionReady === null ? 'Verifying session…' : t('detect_drop_title')}
                   </div>
                   <div style={{ fontSize: '.82rem', color: 'var(--text-muted)' }}>
-                    {t('detect_drop_sub')} <span style={{ color: '#a5b4fc', fontWeight: 600 }}>{t('detect_drop_browse')}</span>
+                    {sessionReady === true && <>{t('detect_drop_sub')} <span style={{ color: '#a5b4fc', fontWeight: 600 }}>{t('detect_drop_browse')}</span></>}
+                    {sessionReady === null && 'Please wait a moment…'}
                   </div>
                 </div>
               </div>
@@ -606,10 +654,11 @@ export default function DetectPage() {
                 id="start-recording-btn"
                 className="btn-primary"
                 onClick={startRecording}
-                disabled={false}
-                style={{ padding: '13px 36px', fontSize: '1rem' }}
+                disabled={sessionReady !== true}
+                style={{ padding: '13px 36px', fontSize: '1rem', opacity: sessionReady !== true ? 0.5 : 1 }}
               >
-                <MicIcon s={20} /> {t('detect_record_btn')}
+                <MicIcon s={20} />
+                {sessionReady === null ? ' Verifying session…' : t('detect_record_btn')}
               </button>
             </div>
 
