@@ -279,7 +279,23 @@ export default function DetectPage() {
     form.append('audio', blob, name)
 
     try {
-      const res = await fetch('/api/detect', { method: 'POST', body: form })
+      // Retry up to 3 times on 503 — covers HF Space cold start (~30s wake-up)
+      const MAX_RETRIES = 3
+      const RETRY_DELAY_MS = 8_000
+      let res!: Response
+      let attempt = 0
+
+      while (attempt <= MAX_RETRIES) {
+        if (attempt > 0) {
+          setErrorMsg(`⏳ AI engine is warming up… (attempt ${attempt}/${MAX_RETRIES})`)
+          await new Promise(r => setTimeout(r, RETRY_DELAY_MS))
+          setErrorMsg('')
+        }
+        res = await fetch('/api/detect', { method: 'POST', body: form })
+        // Only retry on 503 (HF Space sleeping); break on any other status
+        if (res.status !== 503 || attempt === MAX_RETRIES) break
+        attempt++
+      }
 
       // Safely parse JSON — proxies/platforms can return plain-text errors
       // (e.g. "Request Entity Too Large") that would crash res.json()
@@ -289,7 +305,6 @@ export default function DetectPage() {
       })
 
       if (!res.ok) {
-        // Map common HTTP errors to friendly messages
         if (res.status === 401) {
           throw new Error('You must be signed in to use the detection service. Please log in and try again.')
         }
@@ -297,7 +312,7 @@ export default function DetectPage() {
           throw new Error('Too many requests. Please wait a moment before trying again.')
         }
         if (res.status === 503) {
-          throw new Error('The detection service is temporarily unavailable. Please try again later.')
+          throw new Error('The AI engine is still warming up. Please wait 30 seconds and try again.')
         }
         throw new Error(data?.error || `Server error ${res.status}`)
       }

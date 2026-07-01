@@ -3,6 +3,10 @@
     {
       "path": "/api/admin/scheduled-report",
       "schedule": "0 19 */3 * *"
+    },
+    {
+      "path": "/api/admin/keepalive",
+      "schedule": "*/10 * * * *"
     }
   ]
 }
