@@ -64,8 +64,6 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp, 
   const [privAnonymised,    setPrivAnonymised]    = useState(true)
   const [privAnalytics,     setPrivAnalytics]     = useState(true)
   const [settingsLoaded,    setSettingsLoaded]    = useState(false)
-  const [deleteConfirm,     setDeleteConfirm]     = useState(false)
-  const [deleteTyped,       setDeleteTyped]       = useState('')
 
   const name     = displayName || nameProp || (userEmail && userEmail !== 'Loading...' ? userEmail.split('@')[0] : '...')
   const initials = name.charAt(0).toUpperCase() || 'U'
@@ -366,53 +364,9 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp, 
                   <Row label="High contrast mode" desc="Boosts contrast and brightness for low-vision users"          on={dispHighContrast}  toggle={() => setDispHighContrast(v => !v)} />
                   <Row label="Simplified interface" desc="Hides advanced features and shows only essential controls"  on={dispSimplified}   toggle={() => setDispSimplified(v => !v)} />
 
-                  {(dispLargeText || dispHighContrast || dispSimplified) && (
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '.5rem 0 .25rem' }}>
-                      {dispLargeText    && <span className="sup-preview-chip">Aa Large Text</span>}
-                      {dispHighContrast && <span className="sup-preview-chip">☀️ High Contrast</span>}
-                      {dispSimplified   && <span className="sup-preview-chip">✦ Simplified</span>}
-                      <span style={{ fontSize: '.7rem', color: 'var(--text-muted)', alignSelf: 'center' }}>— preview on save</span>
-                    </div>
-                  )}
-
                   <p className="sup-section-label" style={{ marginTop: '1.5rem' }}>{t('settings_privacy')}</p>
                   <Row label="Share anonymised quiz data" desc="Helps improve question quality — no personal data is shared" on={privAnonymised} toggle={() => setPrivAnonymised(v => !v)} />
                   <Row label="Usage analytics"            desc="Helps us understand how features are used to improve VoiceGuard" on={privAnalytics} toggle={() => setPrivAnalytics(v => !v)} />
-
-                  {/* Danger zone */}
-                  <p className="sup-section-label" style={{ marginTop: '1.75rem', color: '#f87171' }}>{t('settings_danger')}</p>
-                  {!deleteConfirm ? (
-                    <button className="sup-btn-danger" onClick={() => setDeleteConfirm(true)}>🗑️ Delete My Account</button>
-                  ) : (
-                    <div style={{ background: 'rgba(204,0,1,.05)', border: '1px solid rgba(204,0,1,.18)', borderRadius: 12, padding: '1rem' }}>
-                      <div style={{ fontSize: '.875rem', fontWeight: 700, color: '#CC0001', marginBottom: 6 }}>{t('settings_delete_warn')}</div>
-                      <div style={{ fontSize: '.8rem', color: 'var(--text-secondary)', marginBottom: 10, lineHeight: 1.5 }}>
-                        All your data will be permanently deleted. Type <strong style={{ color: 'var(--text-primary)' }}>DELETE</strong> to confirm.
-                      </div>
-                      <input
-                        style={{ width: '100%', padding: '8px 10px', borderRadius: 8, border: '1px solid rgba(0,53,128,0.18)', background: '#f8faff', color: 'var(--text-primary)', fontSize: '.82rem', fontFamily: "'Inter',sans-serif", outline: 'none', boxSizing: 'border-box', marginBottom: 8 }}
-                        placeholder="Type DELETE to confirm"
-                        value={deleteTyped}
-                        onChange={e => setDeleteTyped(e.target.value)}
-                      />
-                      <div style={{ display: 'flex', gap: 6 }}>
-                        <button
-                          className="sup-btn-danger"
-                          style={{ flex: 1, opacity: deleteTyped === 'DELETE' ? 1 : 0.4, cursor: deleteTyped === 'DELETE' ? 'pointer' : 'default' }}
-                          disabled={deleteTyped !== 'DELETE'}
-                          onClick={() => alert('Account deletion requested.')}
-                        >
-                          {t('settings_confirm_delete')}
-                        </button>
-                        <button
-                          onClick={() => { setDeleteConfirm(false); setDeleteTyped('') }}
-                          style={{ padding: '8px 12px', borderRadius: 8, border: '1px solid var(--border)', background: 'none', color: 'var(--text-muted)', fontSize: '.82rem', cursor: 'pointer', fontFamily: "'Inter',sans-serif", flex: 1 }}
-                        >
-                          Cancel
-                        </button>
-                      </div>
-                    </div>
-                  )}
                 </div>
               )}
 
