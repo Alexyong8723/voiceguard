@@ -5,6 +5,7 @@ import { createPortal } from 'react-dom'
 import { useLang, LanguageSwitcher } from '@/lib/LanguageContext'
 import { createClient } from '@/lib/supabase/client'
 import { logout } from '@/app/auth/actions'
+import { fetchUserPoints, UserPoints } from '@/app/dashboard/quiz.actions'
 
 // ── Icons ─────────────────────────────────────────────────────────────────────
 const LogOutIcon = ({ s = 16 }: { s?: number }) => (
@@ -32,6 +33,7 @@ const SettingsKnob = ({ s = 14 }: { s?: number }) => (
 interface Props {
   userEmail?: string      // optional — fetched from Supabase if not provided
   displayName?: string
+  userPoints?: UserPoints | null
 }
 
 const LEVEL_COLORS: Record<string, { color: string; bg: string; border: string }> = {
@@ -43,11 +45,13 @@ const LEVEL_COLORS: Record<string, { color: string; bg: string; border: string }
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
-export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }: Props) {
+export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp, userPoints: userPointsProp }: Props) {
   const { t } = useLang()
   const [open,       setOpen]       = useState(false)
   const [tab,        setTab]        = useState<'profile' | 'settings' | 'tnc' | 'guide'>('profile')
   const [userEmail,  setUserEmail]  = useState(emailProp ?? 'Loading...')
+  const [displayName, setDisplayName] = useState(nameProp ?? '')
+  const [userPts,    setUserPts]    = useState<UserPoints | null>(userPointsProp ?? null)
 
   // Settings state (persisted in localStorage)
   const [notifScamAlert,    setNotifScamAlert]    = useState(true)
@@ -63,17 +67,35 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
   const [deleteConfirm,     setDeleteConfirm]     = useState(false)
   const [deleteTyped,       setDeleteTyped]       = useState('')
 
-  const name     = nameProp || (userEmail && userEmail !== 'Loading...' ? userEmail.split('@')[0] : '...')
+  const name     = displayName || nameProp || (userEmail && userEmail !== 'Loading...' ? userEmail.split('@')[0] : '...')
   const initials = name.charAt(0).toUpperCase() || 'U'
+  const level    = userPts?.level ?? 'Beginner'
+  const lvlCol   = LEVEL_COLORS[level] ?? LEVEL_COLORS.Beginner
 
-  // Fetch real user from Supabase on mount
+  // Fetch real user & points from Supabase on mount
   useEffect(() => {
-    if (emailProp) { setUserEmail(emailProp); return }
+    if (emailProp) setUserEmail(emailProp)
+    if (nameProp) setDisplayName(nameProp)
+    if (userPointsProp !== undefined) setUserPts(userPointsProp)
+
     const supabase = createClient()
     supabase.auth.getUser().then(({ data }) => {
-      if (data?.user?.email) setUserEmail(data.user.email)
+      if (data?.user) {
+        if (!emailProp && data.user.email) setUserEmail(data.user.email)
+        if (!nameProp) {
+          const meta = data.user.user_metadata as Record<string, string> | undefined
+          const dName = meta?.full_name || meta?.name || (data.user.email ? data.user.email.split('@')[0] : '')
+          if (dName) setDisplayName(dName)
+        }
+      }
     }).catch(() => { /* silently keep placeholder */ })
-  }, [emailProp])
+
+    if (userPointsProp === undefined) {
+      fetchUserPoints().then(pts => {
+        if (pts) setUserPts(pts)
+      }).catch(() => {})
+    }
+  }, [emailProp, nameProp, userPointsProp])
 
   // Listen for global open events from mobile top bar
   useEffect(() => {
@@ -126,26 +148,26 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
   const Toggle = ({ on, toggle }: { on: boolean; toggle: () => void }) => (
     <div
       style={{
-        width: 42, height: 24, borderRadius: 99, flexShrink: 0, cursor: 'pointer',
+        width: 46, height: 26, borderRadius: 99, flexShrink: 0, cursor: 'pointer',
         background: on ? 'linear-gradient(135deg,#003580,#1a4fa0)' : 'rgba(0,53,128,.15)',
         position: 'relative', transition: 'background .25s',
       }}
       onClick={toggle}
     >
       <div style={{
-        position: 'absolute', top: 3, left: 3, width: 18, height: 18, borderRadius: '50%',
+        position: 'absolute', top: 3, left: 3, width: 20, height: 20, borderRadius: '50%',
         background: 'white', boxShadow: '0 1px 4px rgba(0,53,128,.3)',
         transition: 'transform .25s cubic-bezier(.34,1.56,.64,1)',
-        transform: on ? 'translateX(18px)' : 'translateX(0)',
+        transform: on ? 'translateX(20px)' : 'translateX(0)',
       }}/>
     </div>
   )
 
   const Row = ({ label, desc, on, toggle }: { label: string; desc: string; on: boolean; toggle: () => void }) => (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '11px 0', borderBottom: '1px solid rgba(0,53,128,.07)' }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, padding: '13px 0', borderBottom: '1px solid rgba(0,53,128,.07)' }}>
       <div>
-        <div style={{ fontSize: '.855rem', fontWeight: 500, color: 'var(--text-primary)' }}>{label}</div>
-        <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginTop: 2, lineHeight: 1.4 }}>{desc}</div>
+        <div style={{ fontSize: '.9rem', fontWeight: 700, color: 'var(--text-primary)' }}>{label}</div>
+        <div style={{ fontSize: '.8rem', color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.45 }}>{desc}</div>
       </div>
       <Toggle on={on} toggle={toggle} />
     </div>
@@ -157,35 +179,38 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
         .sup-btn{display:flex;align-items:center;gap:8px;width:100%;padding:10px 12px;border-radius:12px;border:none;background:none;cursor:pointer;transition:background .2s;margin-bottom:4px;font-family:'Inter',sans-serif;text-align:left;color:var(--text-primary);font-size:.95rem;font-weight:600;min-height:48px}
         .sup-btn:hover{background:rgba(0,53,128,.07)}
         .sup-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#003580,#1a4fa0);display:flex;align-items:center;justify-content:center;font-size:.8rem;font-weight:700;color:white;flex-shrink:0}
-        .signout-item{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border-radius:12px;border:1.5px solid rgba(204,0,1,.2);background:rgba(204,0,1,.05);cursor:pointer;font-family:'Inter',sans-serif;font-size:.95rem;font-weight:700;color:#CC0001;transition:background .2s,border-color .2s;min-height:50px}
+        .signout-item{display:flex;align-items:center;gap:10px;width:100%;padding:13px 14px;border-radius:12px;border:1.5px solid rgba(204,0,1,.2);background:rgba(204,0,1,.05);cursor:pointer;font-family:'Inter',sans-serif;font-size:.95rem;font-weight:700;color:#CC0001;transition:background .2s,border-color .2s;min-height:50px}
         .signout-item:hover{background:rgba(204,0,1,.1);border-color:rgba(204,0,1,.35)}
-        .sup-panel{position:fixed;top:0;right:0;width:380px;max-width:100vw;height:100vh;background:#ffffff;border-left:1px solid rgba(0,53,128,0.14);z-index:50;display:flex;flex-direction:column;animation:supSlideIn .25s cubic-bezier(.16,1,.3,1);overflow:hidden;box-shadow:-4px 0 32px rgba(0,53,128,0.12)}
+        .sup-panel{position:fixed;top:0;right:0;width:400px;max-width:100vw;height:100vh;background:#ffffff;border-left:1px solid rgba(0,53,128,0.14);z-index:50;display:flex;flex-direction:column;animation:supSlideIn .25s cubic-bezier(.16,1,.3,1);overflow:hidden;box-shadow:-4px 0 32px rgba(0,53,128,0.12)}
         @keyframes supSlideIn{from{transform:translateX(100%);opacity:.5}to{transform:translateX(0);opacity:1}}
-        .sup-panel-head{padding:1.25rem 1.5rem;background:linear-gradient(135deg,rgba(0,53,128,.07),rgba(26,79,160,.04));border-bottom:1px solid rgba(0,53,128,0.12);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0}
-        .sup-big-avatar{width:48px;height:48px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#003580,#1a4fa0);display:flex;align-items:center;justify-content:center;font-size:1.1rem;font-weight:700;color:white;box-shadow:0 4px 14px rgba(0,53,128,0.28)}
-        .sup-close{background:none;border:none;cursor:pointer;padding:4px;color:var(--text-muted);border-radius:7px;display:flex;transition:color .15s,background .15s;flex-shrink:0}
+        .sup-panel-head{padding:1.5rem 1.5rem;background:linear-gradient(135deg,rgba(0,53,128,.07),rgba(26,79,160,.04));border-bottom:1px solid rgba(0,53,128,0.12);display:flex;align-items:flex-start;justify-content:space-between;gap:12px;flex-shrink:0}
+        .sup-big-avatar{width:54px;height:54px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#003580,#1a4fa0);display:flex;align-items:center;justify-content:center;font-size:1.2rem;font-weight:700;color:white;box-shadow:0 4px 14px rgba(0,53,128,0.3)}
+        .sup-close{background:none;border:none;cursor:pointer;padding:6px;color:var(--text-muted);border-radius:9px;display:flex;transition:color .15s,background .15s;flex-shrink:0;min-width:36px;min-height:36px;align-items:center;justify-content:center}
         .sup-close:hover{color:var(--text-primary);background:rgba(0,53,128,.08)}
         .sup-tabs{display:flex;border-bottom:1px solid rgba(0,53,128,0.12);flex-shrink:0;padding:0 .5rem;background:#fafcff}
-        .sup-tab{flex:1;padding:10px 4px;font-size:.75rem;font-weight:600;background:none;border:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;transition:color .15s,border-color .15s;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:5px}
+        .sup-tab{flex:1;padding:12px 4px;font-size:.8rem;font-weight:700;background:none;border:none;cursor:pointer;color:var(--text-muted);border-bottom:2px solid transparent;transition:color .15s,border-color .15s;font-family:'Inter',sans-serif;display:flex;align-items:center;justify-content:center;gap:5px;min-height:48px}
         .sup-tab:hover{color:#003580}
         .sup-tab.sup-active{color:#003580;border-bottom-color:#003580}
-        .sup-content{flex:1;overflow-y:auto;padding:1.25rem 1.5rem;scrollbar-width:thin;background:#ffffff}
+        .sup-content{flex:1;overflow-y:auto;padding:1.5rem;scrollbar-width:thin;background:#ffffff}
         .sup-content::-webkit-scrollbar{width:4px}
         .sup-content::-webkit-scrollbar-track{background:transparent}
         .sup-content::-webkit-scrollbar-thumb{background:rgba(0,53,128,0.15);border-radius:4px}
-        .sup-section-label{font-size:.68rem;font-weight:700;letter-spacing:.09em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.625rem}
-        .sup-info-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid rgba(0,53,128,0.07);font-size:.84rem}
-        .sup-tnc-section{margin-bottom:1.1rem;padding-bottom:1.1rem;border-bottom:1px solid rgba(0,53,128,0.07)}
+        .sup-section-label{font-size:.7rem;font-weight:800;letter-spacing:.1em;text-transform:uppercase;color:var(--text-muted);margin-bottom:.7rem}
+        .sup-last-updated{font-size:.8rem;color:var(--text-muted);margin-bottom:1rem;margin-top:-.3rem}
+        .sup-info-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid rgba(0,53,128,0.07);font-size:.9rem}
+        .sup-info-key{color:var(--text-muted);flex-shrink:0;font-weight:500}
+        .sup-info-val{color:var(--text-primary);font-weight:700;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:60%}
+        .sup-tnc-section{margin-bottom:1.2rem;padding-bottom:1.2rem;border-bottom:1px solid rgba(0,53,128,0.07)}
         .sup-tnc-section:last-child{border-bottom:none}
-        .sup-tnc-title{font-size:.875rem;font-weight:700;color:var(--text-primary);margin-bottom:.4rem}
-        .sup-tnc-body{font-size:.82rem;color:var(--text-secondary);line-height:1.65}
-        .sup-guide-item{display:flex;gap:12px;margin-bottom:1.1rem;padding-bottom:1.1rem;border-bottom:1px solid rgba(0,53,128,0.07);align-items:flex-start}
+        .sup-tnc-title{font-size:.9rem;font-weight:700;color:var(--text-primary);margin-bottom:.4rem}
+        .sup-tnc-body{font-size:.85rem;color:var(--text-secondary);line-height:1.7}
+        .sup-guide-item{display:flex;gap:14px;margin-bottom:1.2rem;padding-bottom:1.2rem;border-bottom:1px solid rgba(0,53,128,0.07);align-items:flex-start}
         .sup-guide-item:last-child{border-bottom:none}
-        .sup-guide-icon{font-size:1.3rem;flex-shrink:0;margin-top:1px}
-        .sup-guide-title{font-size:.875rem;font-weight:700;color:var(--text-primary);margin-bottom:.3rem}
-        .sup-guide-body{font-size:.82rem;color:var(--text-secondary);line-height:1.6}
-        .sup-preview-chip{font-size:.7rem;font-weight:700;padding:3px 9px;border-radius:99px;background:rgba(0,53,128,.1);border:1px solid rgba(0,53,128,.2);color:#003580}
-        .sup-btn-danger{width:100%;padding:9px;border-radius:9px;border:1px solid rgba(204,0,1,.25);background:rgba(204,0,1,.06);color:#CC0001;font-size:.84rem;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;transition:background .2s}
+        .sup-guide-icon{font-size:1.5rem;flex-shrink:0;margin-top:1px}
+        .sup-guide-title{font-size:.9rem;font-weight:700;color:var(--text-primary);margin-bottom:.3rem}
+        .sup-guide-body{font-size:.85rem;color:var(--text-secondary);line-height:1.65}
+        .sup-preview-chip{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:99px;background:rgba(0,53,128,.1);border:1px solid rgba(0,53,128,.2);color:#003580}
+        .sup-btn-danger{width:100%;padding:12px;border-radius:10px;border:1.5px solid rgba(204,0,1,.25);background:rgba(204,0,1,.06);color:#CC0001;font-size:.95rem;font-weight:700;cursor:pointer;font-family:'Inter',sans-serif;transition:background .2s;min-height:48px}
         .sup-btn-danger:hover:not(:disabled){background:rgba(204,0,1,.12)}
         .sup-btn-danger:disabled{opacity:.45;cursor:default}
         .sup-spinner{width:14px;height:14px;border:2px solid rgba(0,53,128,0.2);border-top-color:#003580;border-radius:50%;display:inline-block;animation:supSpin .7s linear infinite}
@@ -204,10 +229,10 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
         <button className="sup-btn" onClick={() => { setOpen(true); setTab('profile') }}>
           <div className="sup-avatar">{initials}</div>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ fontSize: '.8rem', fontWeight: 600, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: '.9rem', fontWeight: 700, color: 'var(--text-primary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {name}
             </div>
-            <div style={{ fontSize: '.7rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            <div style={{ fontSize: '.75rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
               {userEmail}
             </div>
           </div>
@@ -241,6 +266,14 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
                 <div>
                   <div style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>{name}</div>
                   <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginTop: 2 }}>{userEmail}</div>
+                  {userPts && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 5, marginTop: 5 }}>
+                      <span style={{ fontSize: '.65rem', fontWeight: 700, padding: '1px 7px', borderRadius: 99, background: lvlCol.bg, border: `1px solid ${lvlCol.border}`, color: lvlCol.color }}>{level}</span>
+                      <span style={{ fontSize: '.68rem', color: '#facc15', fontWeight: 700, display: 'flex', alignItems: 'center', gap: 2 }}>
+                        <StarIcon s={10} />{userPts.total_points} pts
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
               <button className="sup-close" onClick={() => setOpen(false)}><XIcon s={15} /></button>
@@ -271,24 +304,65 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
               {tab === 'profile' && (
                 <div>
                   <p className="sup-section-label">{t('profile_account_info')}</p>
-                  <div className="sup-info-row"><span style={{ color: 'var(--text-muted)', flexShrink: 0 }}>{t('profile_display_name')}</span><span style={{ color: 'var(--text-primary)', fontWeight: 500, textAlign: 'right' }}>{name}</span></div>
-                  <div className="sup-info-row"><span style={{ color: 'var(--text-muted)', flexShrink: 0 }}>Email</span><span style={{ color: 'var(--text-primary)', fontWeight: 500, textAlign: 'right', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '60%' }}>{userEmail}</span></div>
-                  <div className="sup-info-row"><span style={{ color: 'var(--text-muted)', flexShrink: 0 }}>{t('profile_account_type')}</span><span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>{t('profile_free_plan')}</span></div>
-                  <div className="sup-info-row" style={{ borderBottom: 'none' }}><span style={{ color: 'var(--text-muted)', flexShrink: 0 }}>{t('profile_member_since')}</span><span style={{ color: 'var(--text-primary)', fontWeight: 500 }}>2025</span></div>
+                  <div className="sup-info-row"><span className="sup-info-key">{t('profile_display_name')}</span><span className="sup-info-val">{name || '—'}</span></div>
+                  <div className="sup-info-row"><span className="sup-info-key">Email</span><span className="sup-info-val">{userEmail}</span></div>
+                  <div className="sup-info-row"><span className="sup-info-key">{t('profile_account_type')}</span><span className="sup-info-val">{t('profile_free_plan')}</span></div>
+                  <div className="sup-info-row" style={{ borderBottom: 'none' }}><span className="sup-info-key">{t('profile_member_since')}</span><span className="sup-info-val">2025</span></div>
+
+                  {userPts && (
+                    <>
+                      <p className="sup-section-label" style={{ marginTop: '1.25rem' }}>{t('profile_quiz_summary')}</p>
+                      <div className="sup-info-row"><span className="sup-info-key">{t('profile_total_points')}</span><span className="sup-info-val" style={{ color: '#facc15', fontWeight: 700 }}>{userPts.total_points} pts</span></div>
+                      <div className="sup-info-row"><span className="sup-info-key">{t('profile_level')}</span><span className="sup-info-val" style={{ color: lvlCol.color, fontWeight: 700 }}>{level}</span></div>
+                      <div className="sup-info-row"><span className="sup-info-key">{t('profile_questions')}</span><span className="sup-info-val">{userPts.total_attempted}</span></div>
+                      <div className="sup-info-row"><span className="sup-info-key">{t('profile_correct')}</span><span className="sup-info-val" style={{ color: '#34d399' }}>{userPts.total_correct}</span></div>
+                      <div className="sup-info-row" style={{ borderBottom: 'none' }}><span className="sup-info-key">{t('profile_streak')}</span><span className="sup-info-val">{userPts.streak_days} day{userPts.streak_days !== 1 ? 's' : ''} 🔥</span></div>
+                    </>
+                  )}
                 </div>
               )}
 
               {/* ── SETTINGS TAB ── */}
               {tab === 'settings' && (
                 <div>
-                  <p className="sup-section-label">{t('settings_notifications')}</p>
+                  {/* ── TWO-FACTOR AUTHENTICATION ── */}
+                  <p className="sup-section-label">🔐 Two-Factor Authentication</p>
+                  <div style={{
+                    padding: '14px 16px', borderRadius: 12,
+                    background: 'rgba(52,211,153,.06)', border: '1px solid rgba(52,211,153,.2)',
+                    marginBottom: '1rem',
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12 }}>
+                      <div>
+                        <div style={{ fontSize: '.9rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: 7 }}>
+                          Authenticator App
+                          <span style={{ fontSize: '.65rem', fontWeight: 700, padding: '2px 8px', borderRadius: 99, background: 'rgba(52,211,153,.15)', border: '1px solid rgba(52,211,153,.3)', color: '#2a9d7a' }}>
+                            ACTIVE
+                          </span>
+                        </div>
+                        <div style={{ fontSize: '.78rem', color: 'var(--text-muted)', marginTop: 3, lineHeight: 1.5 }}>
+                          Microsoft / Google Authenticator is protecting your account
+                        </div>
+                      </div>
+                    </div>
+                    <a href="/mfa-setup"
+                      style={{
+                        display: 'inline-flex', alignItems: 'center', gap: 6, marginTop: 10,
+                        fontSize: '.78rem', fontWeight: 700, color: '#003580',
+                        textDecoration: 'none', opacity: .8,
+                      }}>
+                      🔄 Re-configure authenticator →
+                    </a>
+                  </div>
+
+                  <p className="sup-section-label" style={{ marginTop: '1.25rem' }}>{t('settings_notifications')}</p>
                   <Row label="Scam alert notifications"  desc="Get notified when a new scam alert is issued for your region" on={notifScamAlert}    toggle={() => setNotifScamAlert(v => !v)} />
                   <Row label="Daily quiz reminder"       desc="A gentle reminder to complete today's safety quiz"           on={notifQuizRemind}   toggle={() => setNotifQuizRemind(v => !v)} />
                   <Row label="Weekly security digest"    desc="A weekly summary of cybersecurity news and scam trends"      on={notifWeeklyDigest} toggle={() => setNotifWeeklyDigest(v => !v)} />
                   <Row label="New awareness articles"    desc="Notify me when new guides are published in the Awareness Hub"on={notifNewArticles}  toggle={() => setNotifNewArticles(v => !v)} />
 
                   <p className="sup-section-label" style={{ marginTop: '1.5rem' }}>{t('settings_display')}</p>
-                  <Row label="Large text mode"    desc="Increases base font size across the app for easier reading"  on={dispLargeText}    toggle={() => setDispLargeText(v => !v)} />
+                  <Row label="Large text mode"    desc="Increases base font size across the dashboard for easier reading"  on={dispLargeText}    toggle={() => setDispLargeText(v => !v)} />
                   <Row label="High contrast mode" desc="Boosts contrast and brightness for low-vision users"          on={dispHighContrast}  toggle={() => setDispHighContrast(v => !v)} />
                   <Row label="Simplified interface" desc="Hides advanced features and shows only essential controls"  on={dispSimplified}   toggle={() => setDispSimplified(v => !v)} />
 
@@ -305,14 +379,12 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
                   <Row label="Share anonymised quiz data" desc="Helps improve question quality — no personal data is shared" on={privAnonymised} toggle={() => setPrivAnonymised(v => !v)} />
                   <Row label="Usage analytics"            desc="Helps us understand how features are used to improve VoiceGuard" on={privAnalytics} toggle={() => setPrivAnalytics(v => !v)} />
 
-                  {/* Settings auto-save silently */}
-
                   {/* Danger zone */}
                   <p className="sup-section-label" style={{ marginTop: '1.75rem', color: '#f87171' }}>{t('settings_danger')}</p>
                   {!deleteConfirm ? (
                     <button className="sup-btn-danger" onClick={() => setDeleteConfirm(true)}>🗑️ Delete My Account</button>
                   ) : (
-                    <div style={{ background: 'rgba(204,0,1,.05)', border: '1px solid rgba(204,0,1,.18)', borderRadius: 10, padding: '.875rem' }}>
+                    <div style={{ background: 'rgba(204,0,1,.05)', border: '1px solid rgba(204,0,1,.18)', borderRadius: 12, padding: '1rem' }}>
                       <div style={{ fontSize: '.875rem', fontWeight: 700, color: '#CC0001', marginBottom: 6 }}>{t('settings_delete_warn')}</div>
                       <div style={{ fontSize: '.8rem', color: 'var(--text-secondary)', marginBottom: 10, lineHeight: 1.5 }}>
                         All your data will be permanently deleted. Type <strong style={{ color: 'var(--text-primary)' }}>DELETE</strong> to confirm.
@@ -348,16 +420,16 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
               {tab === 'tnc' && (
                 <div>
                   <p className="sup-section-label">{t('tnc_title')}</p>
-                  <p style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginBottom: '1rem', marginTop: '-.3rem' }}>{t('tnc_updated')}</p>
+                  <p className="sup-last-updated">{t('tnc_updated')}</p>
                   {[
-                    { title: '1. Acceptance of Terms',  body: 'By accessing or using VoiceGuard, you agree to be bound by these Terms and Conditions. If you do not agree, please do not use the application.' },
-                    { title: '2. Use of the Platform',  body: 'VoiceGuard is provided for educational and awareness purposes only. You agree not to misuse the platform for any unlawful purpose.' },
-                    { title: '3. User Data & Privacy',  body: 'We collect only the data necessary to provide our service. Your data is stored securely via Supabase and is never sold to third parties.' },
-                    { title: '4. Educational Content',  body: 'All cybersecurity content on VoiceGuard is for educational purposes only. It does not constitute professional legal, financial, or security advice.' },
-                    { title: '5. Points & Rewards',     body: 'Points earned through the Daily Safety Quiz have no monetary value and cannot be exchanged for cash or services.' },
-                    { title: '6. Third-Party Services', body: 'VoiceGuard integrates with Google Gemini AI and YouTube. Your use of these features is also subject to Google\'s Terms of Service.' },
-                    { title: '7. Changes to Terms',     body: 'We reserve the right to update these Terms at any time. Continued use constitutes acceptance of the updated Terms.' },
-                    { title: '8. Contact',              body: 'For questions regarding these Terms, please contact us at support@voiceguard.my.' },
+                    { title: "1. Acceptance of Terms", body: "By accessing or using VoiceGuard, you agree to be bound by these Terms and Conditions. If you do not agree, please do not use the application. These terms apply to all users, including visitors, registered users, and contributors." },
+                    { title: "2. Use of the Platform", body: "VoiceGuard is provided for educational and awareness purposes only. The platform helps users identify and understand voice phishing (vishing) threats. You agree not to misuse the platform for any unlawful purpose, including but not limited to attempting to reverse-engineer, scrape, or attack the service." },
+                    { title: "3. User Data & Privacy", body: "We collect only the data necessary to provide our service, including your email address, quiz results, and trusted contact information. Your data is stored securely via Supabase and is never sold to third parties. You may request deletion of your account and data at any time via Settings." },
+                    { title: "4. Educational Content", body: "All cybersecurity content, news articles, quiz questions, and video recommendations on VoiceGuard are provided for educational purposes only. They do not constitute professional legal, financial, or security advice. Always consult qualified professionals for specific security concerns." },
+                    { title: "5. Points & Rewards", body: "Points earned through the Daily Safety Quiz are for educational gamification purposes only. They have no monetary value and cannot be exchanged for cash, products, or services unless explicitly stated in a future rewards programme announcement." },
+                    { title: "6. Third-Party Services", body: "VoiceGuard integrates with Google Gemini AI for content generation and YouTube for educational videos. Your use of these features is also subject to Google's Terms of Service and Privacy Policy. We are not responsible for third-party content." },
+                    { title: "7. Changes to Terms", body: "We reserve the right to update these Terms at any time. Continued use of VoiceGuard after changes constitutes acceptance of the updated Terms. We will notify users of significant changes via the platform." },
+                    { title: "8. Contact", body: "For questions regarding these Terms, please contact us at support@voiceguard.my or through the feedback form in the application." },
                   ].map(s => (
                     <div key={s.title} className="sup-tnc-section">
                       <div className="sup-tnc-title">{s.title}</div>
@@ -371,16 +443,16 @@ export function SidebarUserPanel({ userEmail: emailProp, displayName: nameProp }
               {tab === 'guide' && (
                 <div>
                   <p className="sup-section-label">{t('guide_title')}</p>
-                  <p style={{ fontSize: '.75rem', color: 'var(--text-muted)', marginBottom: '1rem', marginTop: '-.3rem' }}>{t('guide_sub')}</p>
+                  <p className="sup-last-updated">{t('guide_sub')}</p>
                   {[
-                    { icon: '🛡️', title: 'Stay Alert Daily',         body: 'Check the dashboard every day. The Daily Safety Quiz takes less than 2 minutes and builds real scam-recognition habits over time.' },
-                    { icon: '📞', title: 'Verify Suspicious Calls',  body: 'Always hang up and call back using the official number from their website — never the number the caller gives you.' },
-                    { icon: '🔐', title: 'Never Share OTPs',         body: 'No legitimate organisation — not your bank, not PDRM — will ever ask for your OTP over a phone call.' },
-                    { icon: '🤖', title: 'Understand AI Threats',    body: 'AI can clone a voice from just 3 seconds of audio. Always verify by calling back on a known number or using a family code word.' },
-                    { icon: '👥', title: 'Use Trusted Contacts',     body: 'Add your most trusted family members to your Trusted Contacts list. When in doubt, contact one of them before taking action.' },
-                    { icon: '📢', title: 'Report Scams',             body: 'Report to PDRM (999), MCMC (1-800-18-8030), or Bank Negara Malaysia LINK (1-300-88-5465). Reporting helps protect others.' },
-                    { icon: '📚', title: 'Explore the Awareness Hub', body: 'Read at least one article per week to stay informed about the latest scam tactics used in Malaysia and globally.' },
-                    { icon: '🔒', title: 'Protect Your Data',        body: 'Never share your login credentials with anyone.' },
+                    { icon: '🛡️', title: "Stay Alert Daily",        body: "Check the dashboard every day. The Daily Safety Quiz takes less than 2 minutes and builds real scam-recognition habits over time. Consistency is more important than intensity." },
+                    { icon: '📞', title: "Verify Suspicious Calls", body: "If you receive an unexpected call from a bank, government agency, or police, always hang up and call back using the official number from their website — never the number the caller gives you." },
+                    { icon: '🔐', title: "Never Share OTPs",        body: "No legitimate organisation — not your bank, not PDRM, not Bank Negara — will ever ask for your One-Time Password (OTP) over a phone call. Sharing it is equivalent to handing over your account." },
+                    { icon: '🤖', title: "Understand AI Threats",   body: "Modern AI can clone a voice from just 3 seconds of audio. If a family member calls in distress asking for money, always verify by calling them back on their known number or using your agreed family code word." },
+                    { icon: '👥', title: "Use Trusted Contacts",    body: "Add your most trusted family members, doctor, and close friends to your Trusted Contacts list. When in doubt about any call or request, contact one of them before taking action." },
+                    { icon: '📢', title: "Report Scams",            body: "If you receive a scam call, report it to PDRM (999), MCMC (1-800-18-8030), or Bank Negara Malaysia LINK (1-300-88-5465). Reporting helps protect others in your community." },
+                    { icon: '📚', title: "Explore the Awareness Hub", body: "The Awareness Hub is updated with AI-generated news and educational content. Read at least one article per week to stay informed about the latest scam tactics used in Malaysia and globally." },
+                    { icon: '🔒', title: "Protect Your Data",       body: "VoiceGuard stores your data securely. However, never share your login credentials with anyone. Enable MFA (Multi-Factor Authentication) in Settings for maximum account security." },
                   ].map(g => (
                     <div key={g.title} className="sup-guide-item">
                       <div className="sup-guide-icon">{g.icon}</div>
